@@ -157,8 +157,7 @@ The remaining 24 columns are actively populated.
 ## Roadmap
 
 - **M0 ✅** — Project scaffold, mapping config, schema, source stubs, Docker, CI.
-- **M1** — Upload page, in-process job runner that produces a C-Series export
-  from R-Series data alone (no enrichment yet).
+- **M1 ✅** — Upload page, run processing, C-Series export download.
 - **M2** — Real Google Books / Open Library / KB SRU adapters with cache,
   retry, per-source toggles in the UI.
 - **M3** — Per-run detail view, in-app mapping editor, CB Webservices adapter

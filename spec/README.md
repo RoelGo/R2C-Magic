@@ -18,12 +18,12 @@ Read these documents in order on first read.
 | 07 | [deployment.md](./07-deployment.md) | Docker, future desktop bundle, configuration |
 | 08 | [open-questions.md](./08-open-questions.md) | Deferred decisions that need a human |
 
-## Status (as of M0)
+## Status (as of M1)
 
 | Milestone | Status |
 |---|---|
 | M0 — Scaffold | **done** — committed as `chore: initial scaffold (M0)` |
-| M1 — CSV pipeline (upload → mapping → export) | not started |
+| M1 — CSV pipeline (upload → mapping → export) | **done** |
 | M2 — Real enrichment (Google Books, Open Library, KB SRU) | not started |
 | M3 — Polish (per-run UI, mapping editor, CB adapter) | not started |
 | M4 — Tauri desktop bundle | not started |

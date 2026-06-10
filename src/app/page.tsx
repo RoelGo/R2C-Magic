@@ -1,30 +1,31 @@
+import { RunTable } from "@/components/run-table";
+import { UploadDropzone } from "@/components/upload-dropzone";
+import { listRuns } from "@/lib/runs";
+
+export const dynamic = "force-dynamic";
+
 export default function Home() {
+  const runs = listRuns();
   return (
-    <div className="space-y-6">
-      <section>
-        <h2 className="text-2xl font-semibold">Upload an R-Series export</h2>
-        <p className="mt-2 text-slate-600 dark:text-slate-400">
-          Drop the CSV exported from Lightspeed R-Series here. R2C Magic will enrich each book using
-          Google Books, Open Library and KB SRU, then produce a C-Series-ready import CSV.
-        </p>
+    <div className="space-y-10">
+      <section className="space-y-3">
+        <header>
+          <h2 className="text-2xl font-semibold">Upload an R-Series export</h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            R2C Magic parses your CSV, applies the mapping, and produces a C-Series-ready import
+            file. Enrichment against online sources lands in milestone M2 — for now every enriched
+            column is blank and only R-Series fields are populated.
+          </p>
+        </header>
+        <UploadDropzone />
       </section>
 
-      <section className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
-        <p className="text-slate-500">
-          Upload UI lands in milestone M1. The CSV pipeline, mapping config and source stubs are
-          already in place — see <code>src/lib/csv</code> and <code>src/lib/enrichment</code>.
-        </p>
-      </section>
-
-      <section>
-        <h3 className="text-lg font-medium">Status</h3>
-        <ul className="mt-2 list-inside list-disc text-sm text-slate-600 dark:text-slate-400">
-          <li>M0 scaffold — done</li>
-          <li>M1 CSV pipeline (upload → mapping → export, no enrichment yet)</li>
-          <li>M2 enrichment (Google Books, Open Library, KB SRU)</li>
-          <li>M3 polish (per-run detail, in-app mapping editor, CB adapter)</li>
-          <li>M4 desktop bundle (Tauri shell + installers)</li>
-        </ul>
+      <section className="space-y-3">
+        <header className="flex items-baseline justify-between">
+          <h2 className="text-xl font-semibold">Recent runs</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Most recent first</p>
+        </header>
+        <RunTable runs={runs} />
       </section>
     </div>
   );

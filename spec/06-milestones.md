@@ -8,7 +8,7 @@ target and ends with `pnpm typecheck && pnpm lint && pnpm test` green.
 | ID | Title | Status |
 |---|---|---|
 | **M0** | Scaffold | **done** (commit `4fae5a8 — chore: initial scaffold (M0)`) |
-| **M1** | CSV pipeline (no enrichment) | not started |
+| **M1** | CSV pipeline (no enrichment) | **done** |
 | **M2** | Real enrichment (Google Books, Open Library, KB SRU) | not started |
 | **M3** | Polish (per-run UI, mapping editor, CB adapter) | not started |
 | **M4** | Tauri desktop bundle | not started |
@@ -43,37 +43,69 @@ Out of scope deliberately:
 
 ---
 
-## M1 — CSV pipeline (no enrichment)
+## M1 — CSV pipeline (no enrichment) ✅
 
 Goal: a user can upload an R-Series CSV in the browser and download a
 C-Series CSV that has all the ignored columns blank, all the constant
 columns filled, and all the R-Series-derived columns populated. Enrichment
 columns are blank for now.
 
-Tasks:
+Delivered:
 
-- [ ] Server action `uploadRun(formData)` that:
-  - validates the file is a CSV ≤ 20 MB
-  - copies it to `DATA_DIR/runs/<id>/source.csv`
-  - calls `parseRSeriesCsv`
-  - inserts a `runs` row + N `books` rows with `enriched_payload = null`
-- [ ] Synchronous "fake enrichment" pass (M1 only): build `EnrichedBook`
-  from `RSeriesRow` alone, persist, generate `export.csv` via `booksToCsv`
-- [ ] Route handler `GET /api/runs/[id]/export` streams the export
-- [ ] Route handler `GET /api/runs/[id]` returns the run + counts JSON
-- [ ] `src/app/page.tsx`: a dropzone (HTML5, no external deps in M1) that
-  POSTs to the server action and redirects to `/runs/[id]`
-- [ ] `src/app/runs/[id]/page.tsx`: shows the run status and a download link
-- [ ] New tests:
-  - server action smoke test (with a tmp DATA_DIR)
-  - end-to-end: parse fixture CSV → write fixture export → snapshot the
-    output for regression
-  - export route returns the right `Content-Disposition` and CSV body
+- `src/lib/runs/` module: `createRun`, `processRunSync`, `listRuns`,
+  `getRun`, `getLatestExportPath`, plus `paths.ts` (filesystem layout) and
+  `seed.ts` (R-Series → EnrichedBook bridge with no enrichment).
+- Auto-migration on first DB open: `src/lib/db/client.ts` runs pending
+  migrations when it opens the SQLite file. No more separate
+  `pnpm db:migrate` step in dev or production.
+- Server action `uploadRunAction(formData)` in `src/app/actions.ts` with
+  validation (CSV ≤ 20 MB, non-empty, plausible file type).
+- Route handlers:
+  - `GET /api/runs/[id]` → JSON `RunSummary`
+  - `GET /api/runs/[id]/export` → streamed C-Series CSV with
+    `Content-Disposition: attachment; filename="r2c_<source>.csv"`
+- UI:
+  - `src/components/upload-dropzone.tsx` — HTML5 dropzone client
+    component (no external deps), uses `useTransition` for the upload
+    server action call.
+  - `src/components/run-table.tsx` — recent runs table with status
+    chips.
+  - `src/app/page.tsx` — dashboard combining the dropzone and the runs
+    table.
+  - `src/app/runs/[id]/page.tsx` — per-run detail with status, counts,
+    download button, and a banner reminding the user that M1 exports
+    have blank enrichment fields.
+- Tests (43 passing total; 11 new for M1):
+  - `tests/runs/runs.test.ts` (6) — `createRun` persists run + books;
+    source CSV written under the run dir; `processRunSync` writes export
+    and marks run completed; export CSV has the expected header + data
+    shape; `listRuns` orders newest-first (with ULID tiebreaker for
+    same-second uploads); unknown run IDs are rejected.
+  - `tests/runs/api.test.ts` (4) — `GET /api/runs/[id]` returns the
+    summary or 404; `GET /api/runs/[id]/export` streams CSV with correct
+    headers or returns 404.
+  - `tests/runs/e2e-sample.test.ts` (1, skipped if the sample CSV is
+    absent) — uploads `imports/item_listings_local_matches.csv`,
+    processes it, parses the export back with papaparse, asserts row
+    count and per-row EAN/title/Visible values.
+  - `tests/helpers/tmp-env.ts` — test fixture for an isolated tmp
+    `DATA_DIR` + `DATABASE_URL` per test, with `vi.resetModules` so
+    `lib/config.ts` re-reads env.
 
-Definition of done:
-- All M0 gates still green.
+Out of scope deliberately (deferred to M2):
+- Real source adapters (still stubs)
+- In-process job queue (M1 runs everything synchronously inside the
+  upload request — fine for the no-enrichment case)
+- Per-book detail UI
+
+Definition of done — all green:
+- `pnpm typecheck` ✓
+- `pnpm lint` ✓
+- `pnpm test` ✓ (43/43)
+- `pnpm build` ✓ (6 routes compiled)
 - Uploading `imports/item_listings_local_matches.csv` produces a download
-  whose first data row matches the expected fields by eyeball.
+  whose data rows have the expected R-Series-derived values and blank
+  enrichment columns (verified by `e2e-sample.test.ts`).
 
 ---
 
