@@ -1,0 +1,70 @@
+{
+  "kind": "books#volumes",
+  "totalItems": 1,
+  "items": [
+    {
+      "kind": "books#volume",
+      "id": "Hlzy0QEACAAJ",
+      "etag": "I/V6kctwfOY",
+      "selfLink": "https://www.googleapis.com/books/v1/volumes/Hlzy0QEACAAJ",
+      "volumeInfo": {
+        "title": "Vrouwen die oorlog zien",
+        "subtitle": "Oekra\u00efens dagboek",
+        "authors": ["Viktorija Amelina"],
+        "publishedDate": "2026",
+        "description": "Analytische annotatie: Oorlogsdagboek over de ervaringen van de jong gestorven schrijfster (1986-2023) en andere Oekra\u00efense vrouwen sinds de Russische invasie van februari 2022. Met zwart-witfoto's.",
+        "industryIdentifiers": [
+          {
+            "type": "ISBN_10",
+            "identifier": "9083436993"
+          },
+          {
+            "type": "ISBN_13",
+            "identifier": "9789083436999"
+          }
+        ],
+        "readingModes": {
+          "text": false,
+          "image": false
+        },
+        "pageCount": 0,
+        "printType": "BOOK",
+        "maturityRating": "NOT_MATURE",
+        "allowAnonLogging": false,
+        "contentVersion": "preview-1.0.0",
+        "panelizationSummary": {
+          "containsEpubBubbles": false,
+          "containsImageBubbles": false
+        },
+        "language": "nl",
+        "previewLink": "http://books.google.be/books?id=Hlzy0QEACAAJ&dq=isbn:9789083436999&hl=&cd=1&source=gbs_api",
+        "infoLink": "http://books.google.be/books?id=Hlzy0QEACAAJ&dq=isbn:9789083436999&hl=&source=gbs_api",
+        "canonicalVolumeLink": "https://books.google.com/books/about/Vrouwen_die_oorlog_zien.html?hl=&id=Hlzy0QEACAAJ"
+      },
+      "saleInfo": {
+        "country": "BE",
+        "saleability": "NOT_FOR_SALE",
+        "isEbook": false
+      },
+      "accessInfo": {
+        "country": "BE",
+        "viewability": "NO_PAGES",
+        "embeddable": false,
+        "publicDomain": false,
+        "textToSpeechPermission": "ALLOWED",
+        "epub": {
+          "isAvailable": false
+        },
+        "pdf": {
+          "isAvailable": false
+        },
+        "webReaderLink": "http://play.google.com/books/reader?id=Hlzy0QEACAAJ&hl=&source=gbs_api",
+        "accessViewStatus": "NONE",
+        "quoteSharingAllowed": false
+      },
+      "searchInfo": {
+        "textSnippet": "Analytische annotatie: Oorlogsdagboek over de ervaringen van de jong gestorven schrijfster (1986-2023) en andere Oekra\u00efense vrouwen sinds de Russische invasie van februari 2022. Met zwart-witfoto&#39;s."
+      }
+    }
+  ]
+}

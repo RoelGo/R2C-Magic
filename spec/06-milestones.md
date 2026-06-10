@@ -148,8 +148,14 @@ Tasks:
       plus a collapsible "recent errors" panel, and calls
       `router.refresh()` exactly once on terminal state so the
       server-rendered download link swaps in without a manual reload.
-- [ ] M2 real-file e2e: upload the rokko sample with mocked fetch →
-  assert downloaded CSV contents (Piece 5).
+- [x] M2 real-file e2e: upload the rokko CB-intake sample (29 Dutch
+      books) with a routing `fetch` stub backed by 5 captured Google
+      Books fixtures + permanent Open Library misses → assert both the
+      generated C-Series CSV and the persisted `EnrichedBook` records
+      (Piece 5). Fixture-selection probed Open Library against the
+      live API for every Dutch EAN in the sample and confirmed zero
+      coverage, so the e2e encodes that real-world limitation rather
+      than fabricating hits we won't see in production.
 - [ ] Add `coverage/` to `.gitignore`, raise coverage target for source
   adapters.
 

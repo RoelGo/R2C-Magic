@@ -3,7 +3,7 @@ import { parseCbIntakeCsv } from "../../src/lib/csv/cb-intake";
 
 /**
  * The fixture is a hand-typed subset of the real CB-intake template
- * (imports/Kopie van sjabloon invoer CB lightspeed - sjabloon.csv) — kept
+ * (imports/sjabloon invoer CB lightspeed - sjabloon.csv) — kept
  * inline so the tests run with no external file dependency, mirroring how
  * the R-Series parser tests are structured.
  */

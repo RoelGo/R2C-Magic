@@ -4,10 +4,7 @@ import Papa from "papaparse";
 import { describe, expect, it } from "vitest";
 import { useTmpEnv } from "../helpers/tmp-env";
 
-const REAL_SAMPLE = resolve(
-  process.cwd(),
-  "imports/Kopie van sjabloon invoer CB lightspeed - sjabloon.csv",
-);
+const REAL_SAMPLE = resolve(process.cwd(), "imports/sjabloon invoer CB lightspeed - sjabloon.csv");
 
 describe("M1 end-to-end against the rokko CB-intake sample", () => {
   useTmpEnv();
@@ -20,7 +17,7 @@ describe("M1 end-to-end against the rokko CB-intake sample", () => {
 
       const content = readFileSync(REAL_SAMPLE, "utf8");
       const created = await createRun({
-        fileName: "Kopie van sjabloon invoer CB lightspeed - sjabloon.csv",
+        fileName: "sjabloon invoer CB lightspeed - sjabloon.csv",
         content,
       });
       // The committed sample currently has 29 rows; assert >= 10 to stay

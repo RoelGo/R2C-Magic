@@ -15,7 +15,7 @@ import { type ParseResult, normalizeEan } from "./r-series";
  * (they may use either `.` or `,` as the decimal separator depending on the
  * sheet's locale), stock fields are coerced to integers.
  *
- * Example: `imports/Kopie van sjabloon invoer CB lightspeed - sjabloon.csv`.
+ * Example: `imports/sjabloon invoer CB lightspeed - sjabloon.csv`.
  */
 
 const rawRowSchema = z.object({

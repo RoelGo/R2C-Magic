@@ -1,0 +1,69 @@
+{
+  "kind": "books#volumes",
+  "totalItems": 1,
+  "items": [
+    {
+      "kind": "books#volume",
+      "id": "ZfKwzwEACAAJ",
+      "etag": "OS7FP9pqCrM",
+      "selfLink": "https://www.googleapis.com/books/v1/volumes/ZfKwzwEACAAJ",
+      "volumeInfo": {
+        "title": "Zwemmen in het donker",
+        "subtitle": "roman",
+        "authors": ["Tomasz Jedrowski"],
+        "publishedDate": "2023",
+        "industryIdentifiers": [
+          {
+            "type": "ISBN_10",
+            "identifier": "9029097264"
+          },
+          {
+            "type": "ISBN_13",
+            "identifier": "9789029097260"
+          }
+        ],
+        "readingModes": {
+          "text": false,
+          "image": false
+        },
+        "pageCount": 0,
+        "printType": "BOOK",
+        "maturityRating": "NOT_MATURE",
+        "allowAnonLogging": false,
+        "contentVersion": "preview-1.0.0",
+        "panelizationSummary": {
+          "containsEpubBubbles": false,
+          "containsImageBubbles": false
+        },
+        "language": "nl",
+        "previewLink": "http://books.google.be/books?id=ZfKwzwEACAAJ&dq=isbn:9789029097260&hl=&cd=1&source=gbs_api",
+        "infoLink": "http://books.google.be/books?id=ZfKwzwEACAAJ&dq=isbn:9789029097260&hl=&source=gbs_api",
+        "canonicalVolumeLink": "https://books.google.com/books/about/Zwemmen_in_het_donker.html?hl=&id=ZfKwzwEACAAJ"
+      },
+      "saleInfo": {
+        "country": "BE",
+        "saleability": "NOT_FOR_SALE",
+        "isEbook": false
+      },
+      "accessInfo": {
+        "country": "BE",
+        "viewability": "NO_PAGES",
+        "embeddable": false,
+        "publicDomain": false,
+        "textToSpeechPermission": "ALLOWED",
+        "epub": {
+          "isAvailable": false
+        },
+        "pdf": {
+          "isAvailable": false
+        },
+        "webReaderLink": "http://play.google.com/books/reader?id=ZfKwzwEACAAJ&hl=&source=gbs_api",
+        "accessViewStatus": "NONE",
+        "quoteSharingAllowed": false
+      },
+      "searchInfo": {
+        "textSnippet": "In het communistische Polen van de vroege jaren tachtig vindt een jonge Poolse man zijn eerste grote liefde in een man."
+      }
+    }
+  ]
+}
