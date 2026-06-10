@@ -1,0 +1,44 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# next.js
+.next
+out
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# production
+dist
+build
+
+# runtime data
+data/*
+!data/.gitkeep
+
+# real rokko inventory exports — never commit (see AGENTS.md)
+imports/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# testing
+coverage
+playwright-report
+test-results
+
+# os
+Thumbs.db

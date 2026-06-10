@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    image: r2c-magic:local
+    container_name: r2c-magic
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: /app/data/r2c.db
+      DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data
+      - ./mapping.config.json:/app/mapping.config.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3

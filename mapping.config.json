@@ -1,0 +1,90 @@
+{
+  "$schema": "./mapping.schema.json",
+  "outputDelimiter": ";",
+  "outputLineEnding": "CRLF",
+  "outputBom": false,
+  "imageSeparator": "|",
+  "includeErrorColumn": true,
+  "errorColumnName": "_enrichment_errors",
+
+  "sourcePriority": ["cb", "kb-sru", "google-books", "open-library"],
+
+  "fieldPriority": {
+    "titleShort": ["r-series", "cb", "kb-sru", "google-books", "open-library"],
+    "titleLong": ["cb", "kb-sru", "google-books", "open-library", "r-series"],
+    "descriptionShort": ["cb", "google-books", "kb-sru", "open-library"],
+    "descriptionLong": ["cb", "google-books", "kb-sru", "open-library"],
+    "publisher": ["cb", "kb-sru", "google-books", "open-library"],
+    "authors": ["cb", "kb-sru", "google-books", "open-library"],
+    "categories": ["cb", "kb-sru", "google-books", "open-library"],
+    "weightGrams": ["cb", "google-books", "open-library"],
+    "dimensionsMm": ["cb", "google-books"],
+    "coverImageUrls": "merge"
+  },
+
+  "columns": [
+    { "name": "Visible", "type": "constant", "value": "Y" },
+    { "name": "Brand", "type": "field", "from": ["enriched.publisher", "rseries.brand"] },
+    { "name": "Supplier", "type": "ignore" },
+    {
+      "name": "NL_Title_Short",
+      "type": "field",
+      "from": "rseries.item",
+      "transform": { "truncate": 80 }
+    },
+    { "name": "NL_Title_Long", "type": "field", "from": ["enriched.titleLong", "rseries.item"] },
+    {
+      "name": "NL_Description_Short",
+      "type": "field",
+      "from": "enriched.descriptionShort",
+      "transform": { "stripHtml": true, "truncate": 200 }
+    },
+    { "name": "NL_Description_Long", "type": "field", "from": "enriched.descriptionLong" },
+    { "name": "NL_Variant", "type": "constant", "value": "Default" },
+    { "name": "Price", "type": "ignore" },
+    { "name": "Price_Old", "type": "ignore" },
+    { "name": "Price_Cost", "type": "ignore" },
+    { "name": "Price_Unit", "type": "ignore" },
+    { "name": "Unit", "type": "ignore" },
+    { "name": "Tax", "type": "ignore" },
+    { "name": "Stock_Track", "type": "constant", "value": "Y" },
+    { "name": "Stock_Disable_Sold_Out", "type": "constant", "value": "N" },
+    { "name": "Stock_Level", "type": "ignore" },
+    { "name": "Stock_Min", "type": "constant", "value": "0" },
+    { "name": "Stock_Alert", "type": "ignore" },
+    { "name": "Article_Code", "type": "ignore" },
+    { "name": "EAN", "type": "field", "from": "rseries.ean" },
+    { "name": "SKU", "type": "ignore" },
+    {
+      "name": "Weight",
+      "type": "field",
+      "from": "enriched.weightGrams",
+      "transform": { "divide": 1000 }
+    },
+    { "name": "Volume", "type": "ignore" },
+    { "name": "Colli", "type": "ignore" },
+    { "name": "Size_X", "type": "ignore" },
+    { "name": "Size_Y", "type": "ignore" },
+    { "name": "Size_Z", "type": "ignore" },
+    { "name": "Matrix", "type": "constant", "value": "" },
+    { "name": "Data_01", "type": "constant", "value": "" },
+    { "name": "Data_02", "type": "constant", "value": "" },
+    { "name": "Data_03", "type": "constant", "value": "" },
+    { "name": "Buy_Min", "type": "ignore" },
+    { "name": "Buy_Max", "type": "ignore" },
+    { "name": "NL_Google_Category", "type": "constant", "value": "Media > Books" },
+    { "name": "NL_Category_1", "type": "field", "from": "rseries.category" },
+    { "name": "NL_Category_2", "type": "field", "from": "rseries.subcategory.0" },
+    { "name": "NL_Category_3", "type": "field", "from": "rseries.subcategory.1" },
+    { "name": "NL_Meta_Title", "type": "computed", "expression": "metaTitle" },
+    {
+      "name": "NL_Meta_Description",
+      "type": "field",
+      "from": "enriched.descriptionShort",
+      "transform": { "stripHtml": true, "truncate": 160 }
+    },
+    { "name": "NL_Meta_Keywords", "type": "computed", "expression": "metaKeywords" },
+    { "name": "Images", "type": "computed", "expression": "images" },
+    { "name": "Tags", "type": "ignore" }
+  ]
+}

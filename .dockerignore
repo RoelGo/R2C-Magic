@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.github
+.idea
+.vscode
+data
+coverage
+playwright-report
+test-results
+*.log
+.env
+.env.*
+!.env.example
+README.md
+AGENTS.md
+imports
