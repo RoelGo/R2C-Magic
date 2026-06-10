@@ -7,7 +7,27 @@
  * which dotted-path root (`rseries.*` or `cb.*`) is valid for this book.
  * Enriched fields are unprefixed and tracked per-field via `fieldSources`.
  */
-export type EnrichmentSourceId = "google-books" | "open-library" | "kb-sru" | "cb" | "r-series";
+/**
+ * Identifiers used in mapping config, DB rows, and provenance tracking.
+ *
+ * - `"google-books"`, `"open-library"`, `"kb-sru"` — live online sources
+ *   queried during enrichment.
+ * - `"cb"` — reserved for the Centraal Boekhuis Webservices online source
+ *   (M3+, blocked on credentials). Distinct from the `"cb-intake"` *input
+ *   format*: that one names a CSV shape, this names an online API.
+ * - `"r-series"` — provenance marker meaning "the value came from the
+ *   uploaded R-Series row itself, not from an online source".
+ * - `"merged"` — provenance sentinel for fields whose `fieldPriority` is
+ *   `"merge"` (e.g. `coverImageUrls` unions across all sources). The real
+ *   per-element source is not tracked.
+ */
+export type EnrichmentSourceId =
+  | "google-books"
+  | "open-library"
+  | "kb-sru"
+  | "cb"
+  | "r-series"
+  | "merged";
 
 /**
  * Identifies which kind of CSV the user uploaded. Distinct from

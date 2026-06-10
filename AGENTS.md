@@ -87,8 +87,10 @@ data/                 SQLite DB + per-run files — gitignored
 - **All file I/O lives in `src/lib/`**, never in `src/app/` components or
   pages. Pages call lib functions.
 - **One adapter file per source** under `src/lib/enrichment/sources/`. Each
-  exports a single `BookSource` object. The registry in `sources/index.ts` is
-  the only consumer of those exports.
+  exports a single `EnrichmentSource` object (not to be confused with the
+  `BookSource` discriminated union in `@/types/book`, which is the parsed
+  upload row). The registry in `sources/index.ts` is the only consumer of
+  those exports.
 - **Run state is in SQLite, not in memory.** A restarted server must be able
   to resume or at least report on in-flight runs.
 - **Logs are structured** (pino). Use `logger.info({ runId, ean }, "...")`,

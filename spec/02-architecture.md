@@ -90,7 +90,7 @@ r2c-magic/
 │   │   │
 │   │   ├── enrichment/
 │   │   │   ├── sources/
-│   │   │   │   ├── source.ts            BookSource interface
+│   │   │   │   ├── source.ts            EnrichmentSource interface
 │   │   │   │   ├── google-books.ts      Stub (M2)
 │   │   │   │   ├── open-library.ts      Stub (M2)
 │   │   │   │   ├── kb-sru.ts            Stub (M2)
@@ -159,7 +159,7 @@ r2c-magic/
 
 ### `src/lib/enrichment/sources/<name>.ts`
 
-- **Does**: implement `BookSource.fetchByEan(ean, signal)` for one source.
+- **Does**: implement `EnrichmentSource.fetchByEan(ean, signal)` for one source.
   Returns `{ data: PartialEnrichment, httpStatus }`. Returns `{ data: {} }`
   for "not found" (does NOT throw).
 - **Does not**: cache, retry, log to stdout (use the pino logger),

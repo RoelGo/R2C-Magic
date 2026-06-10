@@ -57,7 +57,9 @@ export function mergeEnrichments(input: MergeInput, config: MappingConfig): Enri
       if (merged.length > 0) {
         // biome-ignore lint/suspicious/noExplicitAny: dynamic field assignment
         (out as any)[field] = merged;
-        fieldSources[field as keyof EnrichedBook] = "google-books"; // provenance is "merged"; pick a sentinel
+        // Provenance for merged fields is intentionally a sentinel — the
+        // real per-element source is not tracked.
+        fieldSources[field as keyof EnrichedBook] = "merged";
       }
       continue;
     }

@@ -50,7 +50,7 @@ describe("mergeEnrichments", () => {
     expect(merged.fieldSources.descriptionLong).toBe("open-library");
   });
 
-  it("merges and dedups coverImageUrls across sources", () => {
+  it("merges and dedups coverImageUrls across sources, recording 'merged' provenance", () => {
     const merged = mergeEnrichments(
       {
         source,
@@ -64,6 +64,8 @@ describe("mergeEnrichments", () => {
     );
     // priority for coverImageUrls is "merge" with sourcePriority cb > kb-sru > google-books > open-library
     expect(merged.coverImageUrls).toEqual(["a", "b", "c"]);
+    // The real per-element source is not tracked — we use a sentinel.
+    expect(merged.fieldSources.coverImageUrls).toBe("merged");
   });
 
   it("passes through errors", () => {

@@ -28,7 +28,7 @@ Delivered:
   list (19 columns)
 - CSV pipeline: R-Series parser, mapping engine, C-Series writer, computed
   columns, `_enrichment_errors` column
-- `BookSource` interface, registry, and stubs for Google Books, Open
+- `EnrichmentSource` interface, registry, and stubs for Google Books, Open
   Library, KB SRU; merge engine with per-field source priority
 - 32 passing unit tests across 5 files
 - Multi-stage Dockerfile + docker-compose.yml + healthcheck

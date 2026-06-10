@@ -1,4 +1,4 @@
-import type { BookSource, FetchResult } from "./source";
+import type { EnrichmentSource, FetchResult } from "./source";
 
 /**
  * KB SRU (Koninklijke Bibliotheek, Dutch National Library) adapter.
@@ -12,7 +12,7 @@ import type { BookSource, FetchResult } from "./source";
  *
  * Stub: full implementation in M2.
  */
-export const kbSruSource: BookSource = {
+export const kbSruSource: EnrichmentSource = {
   id: "kb-sru",
   displayName: "KB (Koninklijke Bibliotheek)",
 

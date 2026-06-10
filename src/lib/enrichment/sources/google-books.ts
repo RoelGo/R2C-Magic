@@ -1,5 +1,5 @@
 import { config } from "@/lib/config";
-import type { BookSource, FetchResult } from "./source";
+import type { EnrichmentSource, FetchResult } from "./source";
 
 /**
  * Google Books API adapter. Endpoint:
@@ -9,7 +9,7 @@ import type { BookSource, FetchResult } from "./source";
  * thumbnail upgrades (http -> https + zoom param), or category normalization.
  * To be completed in M2.
  */
-export const googleBooksSource: BookSource = {
+export const googleBooksSource: EnrichmentSource = {
   id: "google-books",
   displayName: "Google Books",
 

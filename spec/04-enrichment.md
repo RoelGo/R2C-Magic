@@ -18,12 +18,14 @@ The decision to skip the CB stub until credentials arrive is recorded in
 `spec/01-overview.md` (decision #4). KB SRU was added as a free, no-auth
 Dutch-market source so we are not 100% blocked by CB onboarding (decision #5).
 
-## Source contract — `BookSource`
+## Source contract — `EnrichmentSource`
 
-Defined in `src/lib/enrichment/sources/source.ts`:
+Defined in `src/lib/enrichment/sources/source.ts`. Named to disambiguate
+from `BookSource` in `@/types/book` (the parsed-upload-row discriminated
+union — a different concept entirely):
 
 ```ts
-export interface BookSource {
+export interface EnrichmentSource {
   readonly id: EnrichmentSourceId;     // "google-books" | "open-library" | "kb-sru" | "cb"
   readonly displayName: string;
   isEnabled(): boolean;                // typically: are credentials present?
@@ -37,7 +39,7 @@ export interface FetchResult {
 }
 ```
 
-`PartialEnrichment` is `Omit<Partial<EnrichedBook>, "ean" | "rSeries" |
+`PartialEnrichment` is `Omit<Partial<EnrichedBook>, "ean" | "source" |
 "fieldSources" | "errors">` — i.e. every enriched field is optional and the
 source can supply any subset.
 
@@ -46,7 +48,9 @@ source can supply any subset.
 1. **`{ data: {} }` for "not found"**. Throwing aborts the pipeline.
 2. **Throw for real errors** (network, parse). The orchestrator catches and
    records them in `EnrichedBook.errors`.
-3. **Respect `AbortSignal`**. The orchestrator sets a per-book timeout.
+3. **Respect `AbortSignal`**. The orchestrator gives each source its own
+   `AbortController` with `ENRICH_TIMEOUT_MS`, so a slow upstream does not
+   cancel the others.
 4. **No live API calls in tests**. Use recorded JSON/XML fixtures committed
    under `tests/enrichment/sources/__fixtures__/`.
 5. **One adapter file per source** under `src/lib/enrichment/sources/`.
@@ -55,8 +59,8 @@ source can supply any subset.
 
 ## Adding a new source
 
-1. Create `src/lib/enrichment/sources/<your-source>.ts` exporting a
-   `BookSource`.
+1. Create `src/lib/enrichment/sources/<your-source>.ts` exporting an
+   `EnrichmentSource`.
 2. Append it to the array in `src/lib/enrichment/sources/index.ts`.
 3. If it should outrank other sources for any field, add it to
    `sourcePriority` and/or `fieldPriority` in `mapping.config.json`.

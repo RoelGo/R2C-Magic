@@ -147,7 +147,8 @@ The remaining 24 columns are actively populated.
 ## Adding a new enrichment source
 
 1. Create `src/lib/enrichment/sources/<your-source>.ts` that exports an
-   object implementing the `BookSource` interface from `sources/source.ts`.
+   object implementing the `EnrichmentSource` interface from
+   `sources/source.ts`.
 2. Append it to the array in `src/lib/enrichment/sources/index.ts`.
 3. Optionally add the new source id to `sourcePriority` and any per-field
    `fieldPriority` entries in `mapping.config.json`.

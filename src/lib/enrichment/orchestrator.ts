@@ -19,26 +19,25 @@ export async function enrichBook(
   const perSource: Partial<Record<EnrichmentSourceId, PartialEnrichment>> = {};
   const errors: EnrichedBook["errors"] = [];
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.ENRICH_TIMEOUT_MS);
-
-  try {
-    await Promise.all(
-      enabledSources().map(async (s) => {
-        const sourceId = s.id;
-        try {
-          const result = await s.fetchByEan(ean, controller.signal);
-          perSource[sourceId] = result.data;
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          errors.push({ source: sourceId, message });
-          logger.warn({ source: sourceId, ean, message }, "enrichment failed");
-        }
-      }),
-    );
-  } finally {
-    clearTimeout(timeout);
-  }
+  // One AbortController per source so a slow upstream doesn't cancel the
+  // others — each gets its own ENRICH_TIMEOUT_MS budget.
+  await Promise.all(
+    enabledSources().map(async (s) => {
+      const sourceId = s.id;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), config.ENRICH_TIMEOUT_MS);
+      try {
+        const result = await s.fetchByEan(ean, controller.signal);
+        perSource[sourceId] = result.data;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push({ source: sourceId, message });
+        logger.warn({ source: sourceId, ean, message }, "enrichment failed");
+      } finally {
+        clearTimeout(timeout);
+      }
+    }),
+  );
 
   return mergeEnrichments({ source, perSource, errors }, mapping);
 }

@@ -1,5 +1,5 @@
 import { config } from "@/lib/config";
-import type { BookSource, FetchResult } from "./source";
+import type { EnrichmentSource, FetchResult } from "./source";
 
 /**
  * Open Library adapter. Endpoints used:
@@ -11,7 +11,7 @@ import type { BookSource, FetchResult } from "./source";
  *
  * Stub: full implementation in M2.
  */
-export const openLibrarySource: BookSource = {
+export const openLibrarySource: EnrichmentSource = {
   id: "open-library",
   displayName: "Open Library",
 

@@ -105,12 +105,18 @@ interface EnrichedBook {
   errors: Array<{ source: EnrichmentSourceId; message: string }>;
 }
 
-type EnrichmentSourceId = "google-books" | "open-library" | "kb-sru" | "cb" | "r-series";
+type EnrichmentSourceId =
+  | "google-books"
+  | "open-library"
+  | "kb-sru"
+  | "cb"        // reserved for CB Webservices, M3+
+  | "r-series"  // provenance: value came from the uploaded row, not online
+  | "merged";   // sentinel for fields whose priority is "merge" (e.g. coverImageUrls)
 ```
 
 > Note: `EnrichmentSourceId` is distinct from `InputFormat`. `EnrichmentSourceId`
 > names *online* data sources used during enrichment (the `"cb"` entry is the
-> reserved Centraal Boekhuis Webservices source, M2+); `InputFormat` names
+> reserved Centraal Boekhuis Webservices source, M3+); `InputFormat` names
 > *input file shapes* the parser knows.
 
 `fieldSources` records provenance per field for future UI surfaces ("this
@@ -119,7 +125,7 @@ that ends up in the `_enrichment_errors` CSV column.
 
 ### `PartialEnrichment`
 
-What a `BookSource` adapter returns. Equivalent to:
+What an `EnrichmentSource` adapter returns. Equivalent to:
 
 ```ts
 type PartialEnrichment = Omit<Partial<EnrichedBook>, "ean" | "source" | "fieldSources" | "errors">;

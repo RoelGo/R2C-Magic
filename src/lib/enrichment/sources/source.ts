@@ -19,7 +19,13 @@ export interface FetchResult {
   httpStatus: number;
 }
 
-export interface BookSource {
+/**
+ * Online enrichment adapter contract. One implementation per upstream
+ * (Google Books, Open Library, KB SRU, future CB Webservices). Named to
+ * disambiguate from `BookSource` in `@/types/book`, which is the parsed
+ * upload row's discriminated union.
+ */
+export interface EnrichmentSource {
   /** Stable identifier used in mapping config, DB, logs. */
   readonly id: EnrichmentSourceId;
   /** Human-readable name for UI surfaces. */
