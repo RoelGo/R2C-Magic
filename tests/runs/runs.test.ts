@@ -91,10 +91,9 @@ describe("lib/runs", () => {
     expect(lines[1]?.split(";")[visibleIdx]).toBe("Y");
     expect(lines[1]?.split(";")[titleIdx]).toContain("Het begin van mijn leven");
 
-    // Per the M0 mapping config, Price/Tax/Stock_Level should be blank.
+    // Per the M0 mapping config, Price/Tax/Stock_Level/Article_Code are ignored and excluded from the export.
     for (const ignored of ["Price", "Tax", "Stock_Level", "Article_Code"]) {
-      const idx = headers.indexOf(ignored);
-      expect(lines[1]?.split(";")[idx], `${ignored} should be blank`).toBe("");
+      expect(headers, `${ignored} should be absent`).not.toContain(ignored);
     }
   });
 

@@ -45,11 +45,10 @@ describe("booksToCsv", () => {
     }
   });
 
-  it("respects the ignore list: Price, Tax, SKU etc. are blank", () => {
+  it("excludes ignored columns (Price, Tax, SKU etc.) from the export", () => {
     const csv = booksToCsv([sampleBook()], config);
     const lines = csv.split(/\r?\n/);
     const headers = lines[0]?.split(";") ?? [];
-    const dataLine = lines[1]?.split(";") ?? [];
 
     const ignored = [
       "Supplier",
@@ -73,9 +72,7 @@ describe("booksToCsv", () => {
       "Tags",
     ];
     for (const name of ignored) {
-      const idx = headers.indexOf(name);
-      expect(idx, `column ${name} present`).toBeGreaterThanOrEqual(0);
-      expect(dataLine[idx], `column ${name} should be blank`).toBe("");
+      expect(headers, `column ${name} should be absent`).not.toContain(name);
     }
   });
 

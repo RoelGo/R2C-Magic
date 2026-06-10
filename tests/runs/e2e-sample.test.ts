@@ -43,7 +43,7 @@ describe("M1 end-to-end against the rokko sample", () => {
       expect(headers).toContain("EAN");
       expect(headers).toContain("NL_Title_Short");
       expect(headers).toContain("_enrichment_errors");
-      expect(headers).toHaveLength(44); // 43 mapped columns + error column
+      expect(headers).toHaveLength(25); // 43 mapped columns − 19 ignored + error column
 
       for (const row of parsed.data) {
         expect(row.EAN).toMatch(/^\d{13}$/);

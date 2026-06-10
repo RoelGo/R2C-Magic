@@ -7,7 +7,7 @@ import type { MappingConfig } from "./mapping-schema";
 /**
  * Render a single book to its C-series row according to the loaded mapping.
  * Returns a plain object keyed by output column name; ignored columns are
- * present but empty so the header order is stable.
+ * omitted entirely so they do not appear in the export.
  */
 export function bookToRow(book: EnrichedBook, config: MappingConfig): Record<string, string> {
   const row: Record<string, string> = {};
@@ -18,7 +18,7 @@ export function bookToRow(book: EnrichedBook, config: MappingConfig): Record<str
         row[col.name] = col.value;
         break;
       case "ignore":
-        row[col.name] = "";
+        // Excluded from output — column is intentionally skipped.
         break;
       case "field": {
         const paths = Array.isArray(col.from) ? col.from : [col.from];
@@ -50,7 +50,7 @@ export function bookToRow(book: EnrichedBook, config: MappingConfig): Record<str
 export function booksToCsv(books: EnrichedBook[], configOverride?: MappingConfig): string {
   const config = configOverride ?? loadMappingConfig();
 
-  const headers = config.columns.map((c) => c.name);
+  const headers = config.columns.filter((c) => c.type !== "ignore").map((c) => c.name);
   if (config.includeErrorColumn) headers.push(config.errorColumnName);
 
   const rows = books.map((b) => bookToRow(b, config));
