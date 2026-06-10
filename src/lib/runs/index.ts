@@ -47,8 +47,8 @@ export class UnknownInputFormatError extends Error {
 /**
  * Create a run from an uploaded CSV: detect the input format, parse with the
  * appropriate parser, then persist the source file + run + book rows.
- * Does NOT process. Call `processRunSync(runId)` afterwards (or, in M2, the
- * job runner).
+ * Does NOT process. Hand the returned `runId` to `enqueueRun` (production)
+ * or `processRunInline` (tests) from `src/lib/jobs/run.ts`.
  *
  * @throws {UnknownInputFormatError} if the CSV's header row doesn't match
  *   any known format.
@@ -194,6 +194,86 @@ export function getRun(runId: string): RunSummary | undefined {
   if (!row) return undefined;
   const counts = countExportsByRun(db, [row.id]);
   return { ...row, exportCount: counts.get(row.id) ?? 0 };
+}
+
+/**
+ * Live progress detail for the run-page poller. Adds per-status book counts
+ * (so the UI can render a multi-segment progress bar) and a small sample of
+ * the most recent enrichment errors (so the user can see *what* is going
+ * wrong mid-run instead of waiting for the final report).
+ *
+ * The recent-errors list is deliberately capped — for a 200-book run with
+ * a misconfigured upstream, we don't want to ship 800 messages over the
+ * polling channel every second.
+ */
+export interface BookStatusCounts {
+  pending: number;
+  enriching: number;
+  done: number;
+  failed: number;
+}
+
+export interface RunErrorSample {
+  ean: string;
+  source: string;
+  message: string;
+}
+
+export interface RunDetail extends RunSummary {
+  bookStatusCounts: BookStatusCounts;
+  recentErrors: RunErrorSample[];
+}
+
+const RECENT_ERRORS_LIMIT = 25;
+
+export function getRunDetail(runId: string): RunDetail | undefined {
+  const summary = getRun(runId);
+  if (!summary) return undefined;
+
+  const db = getDb();
+
+  // Per-status histogram for the progress bar. SQLite has no FULL OUTER JOIN
+  // semantics we need, so the simplest correct shape is GROUP BY status and
+  // fill in zeros for any status that didn't appear.
+  const counts: BookStatusCounts = { pending: 0, enriching: 0, done: 0, failed: 0 };
+  const rows = db
+    .select({ status: books.status, count: sql<number>`count(*)`.as("count") })
+    .from(books)
+    .where(eq(books.runId, runId))
+    .groupBy(books.status)
+    .all();
+  for (const r of rows) {
+    counts[r.status] = Number(r.count);
+  }
+
+  // Recent errors: pull every failed book's `errors` JSON array and flatten.
+  // Capped by RECENT_ERRORS_LIMIT after flattening so a single book with
+  // many failed sources can't crowd out other books' errors.
+  const failed = db
+    .select({ ean: books.ean, errors: books.errors })
+    .from(books)
+    .where(eq(books.runId, runId))
+    .all()
+    .filter((b): b is { ean: string; errors: unknown[] } => Array.isArray(b.errors));
+  const recentErrors: RunErrorSample[] = [];
+  for (const b of failed) {
+    for (const e of b.errors) {
+      if (
+        e &&
+        typeof e === "object" &&
+        "source" in e &&
+        "message" in e &&
+        typeof e.source === "string" &&
+        typeof e.message === "string"
+      ) {
+        recentErrors.push({ ean: b.ean, source: e.source, message: e.message });
+        if (recentErrors.length >= RECENT_ERRORS_LIMIT) break;
+      }
+    }
+    if (recentErrors.length >= RECENT_ERRORS_LIMIT) break;
+  }
+
+  return { ...summary, bookStatusCounts: counts, recentErrors };
 }
 
 function countExportsByRun(db: ReturnType<typeof getDb>, runIds: string[]): Map<string, number> {

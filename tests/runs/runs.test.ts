@@ -167,3 +167,71 @@ describe("lib/runs", () => {
     );
   });
 });
+
+describe("getRunDetail", () => {
+  useTmpEnv();
+
+  it("returns undefined for an unknown id", async () => {
+    const { getRunDetail } = await import("../../src/lib/runs");
+    expect(getRunDetail("does-not-exist")).toBeUndefined();
+  });
+
+  it("reports per-status book counts mid-run (no books processed yet)", async () => {
+    const { createRun, getRunDetail } = await import("../../src/lib/runs");
+
+    const { runId } = await createRun({ fileName: "sample.csv", content: SAMPLE_CSV });
+    const detail = getRunDetail(runId);
+
+    expect(detail?.bookStatusCounts).toEqual({
+      pending: 2,
+      enriching: 0,
+      done: 0,
+      failed: 0,
+    });
+    expect(detail?.recentErrors).toEqual([]);
+  });
+
+  it("samples enrichment errors from failed books for the polling UI", async () => {
+    const { createRun, getRunDetail } = await import("../../src/lib/runs");
+    const { getDb } = await import("../../src/lib/db/client");
+    const { books } = await import("../../src/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const { runId } = await createRun({ fileName: "sample.csv", content: SAMPLE_CSV });
+
+    // Simulate one book finishing successfully and one failing with two
+    // source errors. Updating the DB directly lets us exercise getRunDetail
+    // without standing up real adapters.
+    const db = getDb();
+    const allBooks = db.select({ id: books.id, ean: books.ean }).from(books).all();
+    const [first, second] = allBooks;
+    if (!first || !second) throw new Error("expected the SAMPLE_CSV to produce 2 books");
+
+    db.update(books).set({ status: "done" }).where(eq(books.id, first.id)).run();
+    db.update(books)
+      .set({
+        status: "failed",
+        errors: [
+          { source: "google-books", message: "quota exceeded" },
+          { source: "open-library", message: "timeout" },
+        ],
+      })
+      .where(eq(books.id, second.id))
+      .run();
+
+    const detail = getRunDetail(runId);
+    expect(detail?.bookStatusCounts).toEqual({
+      pending: 0,
+      enriching: 0,
+      done: 1,
+      failed: 1,
+    });
+
+    // The recentErrors list should flatten both per-source failures for the
+    // one failed book, tagged with its EAN so the UI can show context.
+    expect(detail?.recentErrors).toEqual([
+      { ean: second.ean, source: "google-books", message: "quota exceeded" },
+      { ean: second.ean, source: "open-library", message: "timeout" },
+    ]);
+  });
+});

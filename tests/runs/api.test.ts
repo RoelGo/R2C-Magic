@@ -28,6 +28,10 @@ describe("GET /api/runs/[id]", () => {
     expect(body.id).toBe(runId);
     expect(body.status).toBe("completed");
     expect(body.totalBooks).toBe(1);
+
+    // Detail fields needed by the run-page poller.
+    expect(body.bookStatusCounts).toEqual({ pending: 0, enriching: 0, done: 1, failed: 0 });
+    expect(body.recentErrors).toEqual([]);
   });
 
   it("returns 404 for an unknown id", async () => {

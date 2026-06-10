@@ -139,7 +139,15 @@ Tasks:
   books stuck in `'enriching'` flipped back to `'pending'`; runs still
   marked `'running'` re-enqueued. Resume (not fail) chosen because the
   self-hosted deployment may restart frequently.
-- [ ] Run page polls `/api/runs/[id]` and shows progress (Piece 4).
+- [x] Run page polls `/api/runs/[id]` and shows progress (Piece 4).
+      `getRunDetail` extends the run summary with a per-status book
+      histogram and a small sample (cap 25) of the most recent enrichment
+      errors; the new `src/components/run-progress.tsx` client component
+      polls every 1s while the run is pending/running, renders a
+      multi-segment progress bar (done / failed / enriching / pending)
+      plus a collapsible "recent errors" panel, and calls
+      `router.refresh()` exactly once on terminal state so the
+      server-rendered download link swaps in without a manual reload.
 - [ ] M2 real-file e2e: upload the rokko sample with mocked fetch →
   assert downloaded CSV contents (Piece 5).
 - [ ] Add `coverage/` to `.gitignore`, raise coverage target for source

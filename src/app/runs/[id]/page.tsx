@@ -1,4 +1,5 @@
-import { getRun } from "@/lib/runs";
+import { RunProgress } from "@/components/run-progress";
+import { getRunDetail } from "@/lib/runs";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -22,7 +23,7 @@ const FORMAT_LABEL: Record<string, string> = {
 
 export default async function RunDetailPage({ params }: Props) {
   const { id } = await params;
-  const run = getRun(id);
+  const run = getRunDetail(id);
   if (!run) notFound();
 
   const canDownload = run.exportCount > 0 && run.status === "completed";
@@ -67,6 +68,14 @@ export default async function RunDetailPage({ params }: Props) {
         })}
       </p>
 
+      {/*
+       * The progress component renders for every run (the bar is useful as
+       * a static summary post-hoc) but only polls while status is
+       * pending/running, and triggers `router.refresh()` on completion so
+       * the download section below swaps in without a manual reload.
+       */}
+      <RunProgress runId={run.id} initial={run} />
+
       <section className="space-y-3 rounded-lg border border-slate-200 p-6 dark:border-slate-800">
         <h3 className="text-lg font-semibold">C-Series export</h3>
         {canDownload ? (
@@ -87,14 +96,10 @@ export default async function RunDetailPage({ params }: Props) {
             This run failed before any export was produced. Check the server logs and re-upload.
           </p>
         ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">No export available yet.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            The export will appear here as soon as every book finishes enriching.
+          </p>
         )}
-      </section>
-
-      <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-        <strong>M1 reminder:</strong> enrichment is not running yet. Every C-Series column that
-        depends on an online source (description, cover image, publisher, …) is blank in this
-        export. M2 will fill them in.
       </section>
     </div>
   );
