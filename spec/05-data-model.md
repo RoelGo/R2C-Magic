@@ -108,7 +108,6 @@ interface EnrichedBook {
 type EnrichmentSourceId =
   | "google-books"
   | "open-library"
-  | "kb-sru"
   | "cb"        // reserved for CB Webservices, M3+
   | "r-series"  // provenance: value came from the uploaded row, not online
   | "merged";   // sentinel for fields whose priority is "merge" (e.g. coverImageUrls)
@@ -120,7 +119,7 @@ type EnrichmentSourceId =
 > *input file shapes* the parser knows.
 
 `fieldSources` records provenance per field for future UI surfaces ("this
-description came from KB SRU"). `errors` is the per-source failure list
+description came from Open Library"). `errors` is the per-source failure list
 that ends up in the `_enrichment_errors` CSV column.
 
 ### `PartialEnrichment`

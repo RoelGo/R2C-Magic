@@ -40,7 +40,7 @@ const columnSchema = z.discriminatedUnion("type", [
 
 export type MappingColumn = z.infer<typeof columnSchema>;
 
-const sourceId = z.enum(["cb", "kb-sru", "google-books", "open-library", "r-series"]);
+const sourceId = z.enum(["cb", "google-books", "open-library", "r-series"]);
 
 export const mappingConfigSchema = z
   .object({
@@ -51,7 +51,7 @@ export const mappingConfigSchema = z
     imageSeparator: z.string().min(1).default("|"),
     includeErrorColumn: z.boolean().default(true),
     errorColumnName: z.string().min(1).default("_enrichment_errors"),
-    sourcePriority: z.array(sourceId).default(["cb", "kb-sru", "google-books", "open-library"]),
+    sourcePriority: z.array(sourceId).default(["cb", "google-books", "open-library"]),
     fieldPriority: z
       .record(z.string(), z.union([z.array(sourceId), z.literal("merge")]))
       .default({}),

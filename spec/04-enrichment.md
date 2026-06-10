@@ -7,16 +7,24 @@ public catalogs in parallel and merging the results.
 
 ## Sources
 
-| Source | Status (M0) | Auth | Strength | Notes |
+| Source | Status | Auth | Strength | Notes |
 |---|---|---|---|---|
-| **Google Books** | stub | optional API key | Broad coverage, English-dominant, decent covers | Returns HTTP 429 quickly without a key on big runs |
-| **Open Library** | stub | none (User-Agent required) | Open data, covers, descriptions, works | Slower; descriptions sometimes live on the `works` document, not the edition |
-| **KB SRU** | stub | none | Strong Dutch-language coverage | XML response (Dublin Core); needs a small XML parser |
+| **Google Books** | live (M2) | optional API key | Broad coverage, English-dominant, decent covers | Returns HTTP 429 quickly without a key on big runs |
+| **Open Library** | live (M2) | none (User-Agent required) | Open data, covers, descriptions, works | Slower; descriptions live on the `works` document; a hit requires up to 3 HTTP calls |
 | **CB Webservices** | not implemented | bookseller contract | The richest BE/NL trade metadata: descriptions, covers, NUR codes, dimensions, themas | Requires `aansluitnummer` + a webservice subscription, see below |
 
 The decision to skip the CB stub until credentials arrive is recorded in
-`spec/01-overview.md` (decision #4). KB SRU was added as a free, no-auth
-Dutch-market source so we are not 100% blocked by CB onboarding (decision #5).
+`spec/01-overview.md` (decision #4).
+
+> **Dropped: KB SRU.** The plan was to use KB's free `jsru.kb.nl` SRU
+> endpoint as a Dutch-market source. Investigation during M2 showed that
+> endpoint is essentially a Delpher (newspapers / digitized text) index —
+> ISBN queries return either zero records or an unrelated default record
+> (always the same ANP news clip from 1970). The real book catalog (GGC)
+> requires KB credentials. We removed the adapter rather than ship a
+> source that returns garbage. Until rokko gets CB credentials, Dutch
+> coverage falls to Google Books and Open Library, which is the same
+> position we were in for English titles all along.
 
 ## Source contract — `EnrichmentSource`
 
@@ -26,7 +34,7 @@ union — a different concept entirely):
 
 ```ts
 export interface EnrichmentSource {
-  readonly id: EnrichmentSourceId;     // "google-books" | "open-library" | "kb-sru" | "cb"
+  readonly id: EnrichmentSourceId;     // "google-books" | "open-library" | "cb"
   readonly displayName: string;
   isEnabled(): boolean;                // typically: are credentials present?
   fetchByEan(ean: string, signal: AbortSignal): Promise<FetchResult>;
@@ -91,14 +99,13 @@ no logging, no source knowledge beyond the priority lists.
 
 ### Example
 
-With `sourcePriority: ["cb", "kb-sru", "google-books", "open-library"]` and
-`fieldPriority: { "descriptionLong": ["cb", "google-books", "kb-sru", "open-library"] }`:
+With `sourcePriority: ["cb", "google-books", "open-library"]` and
+`fieldPriority: { "descriptionLong": ["cb", "google-books", "open-library"] }`:
 
 | Source | `descriptionLong` provided? |
 |---|---|
 | cb | — |
 | google-books | "From Google" |
-| kb-sru | "From KB" |
 | open-library | "From OL" |
 
 → The merger picks `"From Google"` and sets `fieldSources.descriptionLong =

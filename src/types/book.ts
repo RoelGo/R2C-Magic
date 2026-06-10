@@ -10,8 +10,8 @@
 /**
  * Identifiers used in mapping config, DB rows, and provenance tracking.
  *
- * - `"google-books"`, `"open-library"`, `"kb-sru"` — live online sources
- *   queried during enrichment.
+ * - `"google-books"`, `"open-library"` — live online sources queried during
+ *   enrichment.
  * - `"cb"` — reserved for the Centraal Boekhuis Webservices online source
  *   (M3+, blocked on credentials). Distinct from the `"cb-intake"` *input
  *   format*: that one names a CSV shape, this names an online API.
@@ -21,13 +21,7 @@
  *   `"merge"` (e.g. `coverImageUrls` unions across all sources). The real
  *   per-element source is not tracked.
  */
-export type EnrichmentSourceId =
-  | "google-books"
-  | "open-library"
-  | "kb-sru"
-  | "cb"
-  | "r-series"
-  | "merged";
+export type EnrichmentSourceId = "google-books" | "open-library" | "cb" | "r-series" | "merged";
 
 /**
  * Identifies which kind of CSV the user uploaded. Distinct from

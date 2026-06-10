@@ -24,15 +24,14 @@ describe("mergeEnrichments", () => {
         perSource: {
           "open-library": { titleLong: "from open-library" },
           "google-books": { titleLong: "from google" },
-          "kb-sru": { titleLong: "from kb-sru" },
         },
         errors: [],
       },
       config,
     );
-    // titleLong priority excludes cb (not present), kb-sru wins
-    expect(merged.titleLong).toBe("from kb-sru");
-    expect(merged.fieldSources.titleLong).toBe("kb-sru");
+    // titleLong priority excludes cb (not present); google-books outranks open-library
+    expect(merged.titleLong).toBe("from google");
+    expect(merged.fieldSources.titleLong).toBe("google-books");
   });
 
   it("falls back through the priority list when higher-priority sources are empty", () => {
@@ -62,7 +61,7 @@ describe("mergeEnrichments", () => {
       },
       config,
     );
-    // priority for coverImageUrls is "merge" with sourcePriority cb > kb-sru > google-books > open-library
+    // priority for coverImageUrls is "merge" with sourcePriority cb > google-books > open-library
     expect(merged.coverImageUrls).toEqual(["a", "b", "c"]);
     // The real per-element source is not tracked — we use a sentinel.
     expect(merged.fieldSources.coverImageUrls).toBe("merged");

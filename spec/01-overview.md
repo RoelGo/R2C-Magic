@@ -35,7 +35,7 @@ that led to M0. Future PRs should not silently reverse them.
 | 2 | **Tax columns blank** — handled when R-Series and C-Series merge at the till/web boundary, so R2C Magic does not compute tax | User answer |
 | 3 | **Failed enrichment is not fatal** — leave the column blank, write the reason to a `_enrichment_errors` column appended to the export | User answer |
 | 4 | **Skip CB Webservices** until rokko provides credentials. Do not even scaffold a stub file | User answer |
-| 5 | **Add KB SRU** (Dutch National Library) as a free fourth source — recommended over CB-only because it's auth-free and strong for the BE/NL market | User accepted recommendation |
+| 5 | **Add KB SRU** (Dutch National Library) as a free fourth source — recommended over CB-only because it's auth-free and strong for the BE/NL market | User accepted recommendation; **superseded in M2**: the free `jsru.kb.nl` endpoint turned out to be a Delpher index, not a book catalog (ISBN queries always returned the same default ANP news record). Adapter removed during M2 — see `spec/04-enrichment.md` |
 | 6 | **No authentication in v1** — self-hosted behind a reverse proxy is the assumed deployment | User answer |
 | 7 | **Auto-commit M0** once scaffold + docs are in place | User answer |
 | 8 | **Package / repo name: `r2c-magic`** | User answer |

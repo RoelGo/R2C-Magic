@@ -9,7 +9,7 @@ target and ends with `pnpm typecheck && pnpm lint && pnpm test` green.
 |---|---|---|
 | **M0** | Scaffold | **done** (commit `4fae5a8 — chore: initial scaffold (M0)`) |
 | **M1** | CSV pipeline (no enrichment) | **done** |
-| **M2** | Real enrichment (Google Books, Open Library, KB SRU) | not started |
+| **M2** | Real enrichment (Google Books, Open Library) | not started |
 | **M3** | Polish (per-run UI, mapping editor, CB adapter) | not started |
 | **M4** | Tauri desktop bundle | not started |
 
@@ -28,8 +28,8 @@ Delivered:
   list (19 columns)
 - CSV pipeline: R-Series parser, mapping engine, C-Series writer, computed
   columns, `_enrichment_errors` column
-- `EnrichmentSource` interface, registry, and stubs for Google Books, Open
-  Library, KB SRU; merge engine with per-field source priority
+- `EnrichmentSource` interface, registry, and stubs for Google Books and
+  Open Library; merge engine with per-field source priority
 - 32 passing unit tests across 5 files
 - Multi-stage Dockerfile + docker-compose.yml + healthcheck
 - GitHub Actions CI (typecheck + lint + test)
@@ -120,11 +120,13 @@ Tasks:
   thumbnail URL upgrade (`http→https` + `&zoom=0`), category passthrough,
   fixtures for found / not-found / 429
 - [ ] **Open Library adapter** — combine `/api/books?bibkeys=ISBN:<ean>&jscmd=data`
-  with `/isbn/<ean>.json` for the description; set User-Agent from config;
+  with `/isbn/<ean>.json` and (when the edition links to a work)
+  `/works/<id>.json` for the description; set User-Agent from config;
   fixtures
-- [ ] **KB SRU adapter** — add `fast-xml-parser`, hit
-  `https://jsru.kb.nl/sru/sru.bibliotheken`, map Dublin Core fields,
-  fixtures
+- [ ] ~~**KB SRU adapter**~~ — dropped during M2 investigation. The free
+  `jsru.kb.nl` endpoint returned a default ANP news record for every ISBN
+  query; the real book catalog (GGC) requires KB credentials. See
+  `spec/04-enrichment.md` for the full note.
 - [ ] `src/lib/jobs/queue.ts` — single `p-queue` instance with concurrency
   from config
 - [ ] `src/lib/jobs/runner.ts` — process one run end-to-end:

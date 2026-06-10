@@ -1,0 +1,37 @@
+{
+  "kind": "books#volumes",
+  "totalItems": 1,
+  "items": [
+    {
+      "kind": "books#volume",
+      "id": "2hmcCwAAQBAJ",
+      "etag": "abc123",
+      "selfLink": "https://www.googleapis.com/books/v1/volumes/2hmcCwAAQBAJ",
+      "volumeInfo": {
+        "title": "Fantastic Mr Fox",
+        "subtitle": "Colour Edition",
+        "authors": ["Roald Dahl"],
+        "publisher": "Penguin UK",
+        "publishedDate": "2016-02-04",
+        "description": "<p>Boggis, Bunce and Bean are three of the meanest farmers you ever saw. Together they hatch a plan to dig out Fantastic Mr Fox. But Mr Fox has a plan of his own . . .</p>",
+        "industryIdentifiers": [
+          { "type": "ISBN_13", "identifier": "9780140328721" },
+          { "type": "ISBN_10", "identifier": "0140328726" }
+        ],
+        "pageCount": 96,
+        "categories": ["Juvenile Fiction / Animals / Foxes"],
+        "averageRating": 4.5,
+        "ratingsCount": 130,
+        "language": "en",
+        "imageLinks": {
+          "smallThumbnail": "http://books.google.com/books/content?id=2hmcCwAAQBAJ&printsec=frontcover&img=1&zoom=5&edge=curl&source=gbs_api",
+          "thumbnail": "http://books.google.com/books/content?id=2hmcCwAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"
+        },
+        "previewLink": "http://books.google.co.uk/books?id=2hmcCwAAQBAJ&hl=&source=gbs_api",
+        "infoLink": "https://play.google.com/store/books/details?id=2hmcCwAAQBAJ&source=gbs_api"
+      },
+      "saleInfo": { "country": "US", "saleability": "NOT_FOR_SALE" },
+      "accessInfo": { "country": "US", "viewability": "PARTIAL" }
+    }
+  ]
+}

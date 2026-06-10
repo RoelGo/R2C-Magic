@@ -7,16 +7,16 @@
   "includeErrorColumn": true,
   "errorColumnName": "_enrichment_errors",
 
-  "sourcePriority": ["cb", "kb-sru", "google-books", "open-library"],
+  "sourcePriority": ["cb", "google-books", "open-library"],
 
   "fieldPriority": {
-    "titleShort": ["r-series", "cb", "kb-sru", "google-books", "open-library"],
-    "titleLong": ["cb", "kb-sru", "google-books", "open-library", "r-series"],
-    "descriptionShort": ["cb", "google-books", "kb-sru", "open-library"],
-    "descriptionLong": ["cb", "google-books", "kb-sru", "open-library"],
-    "publisher": ["cb", "kb-sru", "google-books", "open-library"],
-    "authors": ["cb", "kb-sru", "google-books", "open-library"],
-    "categories": ["cb", "kb-sru", "google-books", "open-library"],
+    "titleShort": ["r-series", "cb", "google-books", "open-library"],
+    "titleLong": ["cb", "google-books", "open-library", "r-series"],
+    "descriptionShort": ["cb", "google-books", "open-library"],
+    "descriptionLong": ["cb", "google-books", "open-library"],
+    "publisher": ["cb", "google-books", "open-library"],
+    "authors": ["cb", "google-books", "open-library"],
+    "categories": ["cb", "google-books", "open-library"],
     "weightGrams": ["cb", "google-books", "open-library"],
     "dimensionsMm": ["cb", "google-books"],
     "coverImageUrls": "merge"

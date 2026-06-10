@@ -1,5 +1,4 @@
 import { googleBooksSource } from "./google-books";
-import { kbSruSource } from "./kb-sru";
 import { openLibrarySource } from "./open-library";
 import type { EnrichmentSource } from "./source";
 
@@ -11,7 +10,6 @@ import type { EnrichmentSource } from "./source";
  * `src/lib/enrichment/sources/<name>.ts` and append it here.
  */
 export const allSources: readonly EnrichmentSource[] = [
-  kbSruSource,
   googleBooksSource,
   openLibrarySource,
 ] as const;

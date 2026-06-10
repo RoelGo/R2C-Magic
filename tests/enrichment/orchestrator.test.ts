@@ -82,7 +82,7 @@ describe("enrichBook orchestrator", () => {
       fetchByEan: async () => ({ data: { titleLong: "ok title" }, httpStatus: 200 }),
     };
     const boom: EnrichmentSource = {
-      id: "kb-sru",
+      id: "open-library",
       displayName: "boom",
       isEnabled: () => true,
       fetchByEan: async () => {
@@ -95,6 +95,6 @@ describe("enrichBook orchestrator", () => {
     const enriched = await enrichBook(source, loadMappingConfig());
 
     expect(enriched.titleLong).toBe("ok title");
-    expect(enriched.errors).toContainEqual({ source: "kb-sru", message: "network exploded" });
+    expect(enriched.errors).toContainEqual({ source: "open-library", message: "network exploded" });
   });
 });

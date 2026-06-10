@@ -22,9 +22,8 @@
         │  per book:       │
         │   ├─ cache hit?  │  enrichment_cache
         │   ├─ fetch each ─┼──▶ Google Books
-        │   │  source in   ├──▶ Open Library
-        │   │  parallel    └──▶ KB SRU
-        │   │              │     (CB Webservices — pending credentials)
+        │   │  source in   └──▶ Open Library
+        │   │  parallel    │     (CB Webservices — pending credentials)
         │   ├─ merge       │  src/lib/enrichment/merge.ts
         │   └─ persist     │  enrichments + books.enriched_payload
         │                  │
@@ -91,9 +90,8 @@ r2c-magic/
 │   │   ├── enrichment/
 │   │   │   ├── sources/
 │   │   │   │   ├── source.ts            EnrichmentSource interface
-│   │   │   │   ├── google-books.ts      Stub (M2)
-│   │   │   │   ├── open-library.ts      Stub (M2)
-│   │   │   │   ├── kb-sru.ts            Stub (M2)
+│   │   │   │   ├── google-books.ts      Live (M2)
+│   │   │   │   ├── open-library.ts      Live (M2)
 │   │   │   │   └── index.ts             Source registry
 │   │   │   ├── merge.ts             Per-field priority merge
 │   │   │   └── orchestrator.ts      Enrich one book end-to-end

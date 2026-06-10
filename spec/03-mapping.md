@@ -62,9 +62,9 @@ no Lightspeed System ID yet — they exist only as buying intent.
   "includeErrorColumn": true,
   "errorColumnName": "_enrichment_errors",
 
-  "sourcePriority": ["cb", "kb-sru", "google-books", "open-library"],
+  "sourcePriority": ["cb", "google-books", "open-library"],
   "fieldPriority": {
-    "descriptionLong": ["cb", "google-books", "kb-sru", "open-library"],
+    "descriptionLong": ["cb", "google-books", "open-library"],
     "coverImageUrls": "merge"
   },
 
@@ -144,12 +144,12 @@ To add a new computed expression: add the function, extend the `enum` in
 The global default order for resolving merged fields. Per-field overrides
 go in `fieldPriority`.
 
-Current value: `["cb", "kb-sru", "google-books", "open-library"]`.
+Current value: `["cb", "google-books", "open-library"]`.
 
-Rationale: CB has the richest Dutch trade data when available; KB SRU has
-strong Dutch coverage with no auth; Google Books is broad; Open Library is
-the most permissive fallback. `r-series` can appear in a per-field priority
-list (it means "use the R-series value as fallback").
+Rationale: CB has the richest Dutch trade data when available; Google Books
+is broad; Open Library is the most permissive fallback. `r-series` can
+appear in a per-field priority list (it means "use the R-series value as
+fallback").
 
 ### `fieldPriority`
 
