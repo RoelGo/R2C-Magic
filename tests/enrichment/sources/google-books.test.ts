@@ -84,6 +84,31 @@ describe("googleBooksSource.fetchByEan", () => {
     expect(result.data).toEqual({});
   });
 
+  // Real-world coverage gap captured from the live API on 2026-06-10 with a
+  // GOOGLE_BOOKS_API_KEY set. Google Books has Omar El Akkad's English
+  // edition (ISBN 9798217070251, Random House, Feb 2025) but not the Dutch
+  // translation published by De Geus (EAN 9789089684592, June 2026). The
+  // /volumes?q=isbn:9789089684592 endpoint returns the same `totalItems: 0`
+  // shape as the synthetic miss above, but documenting it with a real EAN
+  // serves as a reminder that small Dutch publishers are routinely
+  // un-covered by Google Books and rokko should expect Open Library or CB
+  // to fill those gaps.
+  it("returns empty data for a real Dutch EAN Google Books does not catalog", async () => {
+    const { text } = loadFixture("9789089684592-not-found.json");
+    const fetchSpy = mockFetchOnce({ body: text });
+
+    const result = await googleBooksSource.fetchByEan(
+      "9789089684592",
+      new AbortController().signal,
+    );
+
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const url = new URL(fetchSpy.mock.calls[0]?.[0] as string);
+    expect(url.searchParams.get("q")).toBe("isbn:9789089684592");
+    expect(result.httpStatus).toBe(200);
+    expect(result.data).toEqual({});
+  });
+
   it("throws a recordable error on HTTP 429 (quota exceeded)", async () => {
     const { text } = loadFixture("quota-exceeded.json");
     mockFetchOnce({ status: 429, body: text });
