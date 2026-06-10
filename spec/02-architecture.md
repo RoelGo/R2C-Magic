@@ -4,12 +4,16 @@
 
 ```
    item_listings_local_matches.csv      (R-Series export)
+            or
+   Kopie van sjabloon … sjabloon.csv    (CB-intake template)
                   │
                   ▼ (multipart upload to a server action)
         ┌──────────────────┐
         │  R2C Magic       │
         │                  │
-        │  parse + Zod     │  src/lib/csv/r-series.ts
+        │  detect format ──┼──▶ src/lib/csv/format-detect.ts
+        │  parse + Zod     │  src/lib/csv/r-series.ts (R-Series)
+        │                  │  src/lib/csv/cb-intake.ts (CB-intake)
         │  insert run +    │  src/lib/db/schema.ts
         │  books rows      │
         │                  │
@@ -41,7 +45,7 @@ r2c-magic/
 ├── LICENSE                    MIT
 ├── spec/                      This folder — design rationale
 ├── mapping.config.json        R → C mapping (single source of truth)
-├── imports/                   Sample R-Series CSV (rokko-provided)
+├── imports/                   Sample CSVs (R-Series + CB-intake — gitignored, rokko-provided)
 ├── templates/                 Sample C-Series CSV (Lightspeed-provided)
 ├── data/                      Runtime DB + per-run files (gitignored)
 │
@@ -71,6 +75,8 @@ r2c-magic/
 │   │   │
 │   │   ├── csv/
 │   │   │   ├── r-series.ts          Parse comma/quoted R-Series export
+│   │   │   ├── cb-intake.ts         Parse the rokko CB-intake template
+│   │   │   ├── format-detect.ts     Sniff header row → InputFormat
 │   │   │   ├── c-series.ts          Write semicolon C-Series import
 │   │   │   ├── mapping.ts           Field resolution + transforms
 │   │   │   ├── mapping-schema.ts    Zod schema for mapping.config.json
@@ -95,7 +101,7 @@ r2c-magic/
 │   │   └── jobs/                    (M2) p-queue + run worker
 │   │
 │   └── types/
-│       └── book.ts            Canonical Book, RSeriesRow, EnrichedBook
+│       └── book.ts            Canonical InputFormat, RSeriesRow, CbIntakeRow, BookSource, EnrichedBook
 │
 └── tests/
     ├── csv/                   Parser, writer, mapping engine
@@ -116,14 +122,32 @@ r2c-magic/
 ### `src/lib/csv/r-series.ts`
 
 - **Does**: parse the R-Series export shape, normalize EANs to 13 digits,
-  produce `RSeriesRow[]` and a separate `invalid[]` list.
+  produce `RSeriesRow[]` and a separate `invalid[]` list. Exports the
+  generic `ParseResult<TRow>` type that the CB-intake parser also uses.
 - **Does not**: enrich, transform values, or write anything to disk.
+
+### `src/lib/csv/cb-intake.ts`
+
+- **Does**: parse the rokko CB-intake template (mixed English / Dutch
+  headers), normalize EANs, produce `CbIntakeRow[]` + `invalid[]`.
+- **Does not**: enrich, transform values, or convert locale-formatted
+  numbers (prices stay as strings until the mapping layer sees them).
+
+### `src/lib/csv/format-detect.ts`
+
+- **Does**: read the header row of an uploaded CSV and return the
+  matching `InputFormat`, or `undefined` if neither parser would accept
+  it. Pure function of input.
+- **Does not**: parse the body of the file, do any I/O, or decide what
+  to do on `undefined` — that's the caller's job.
 
 ### `src/lib/csv/mapping.ts` + `mapping-schema.ts` + `computed.ts`
 
 - **Does**: load `mapping.config.json`, validate it, resolve dotted paths
-  (`enriched.titleLong`, `rseries.subcategory.0`), apply transforms
-  (`truncate`, `stripHtml`, `divide`), evaluate named computed columns.
+  (`enriched.titleLong`, `rseries.subcategory.0`, `cb.description`), apply
+  transforms (`truncate`, `stripHtml`, `divide`), evaluate named computed
+  columns. Paths for the wrong input format silently resolve to
+  `undefined` so a single `from: [...]` chain can serve both formats.
 - **Does not**: contain any actual mapping rules. Rules live in the JSON.
 
 ### `src/lib/csv/c-series.ts`

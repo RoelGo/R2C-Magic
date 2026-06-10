@@ -7,6 +7,11 @@ const SAMPLE_CSV = `"System ID","UPC","EAN","Custom SKU","Manufact. SKU","Item",
 "210000000003","","9789462673465","","","Angela Davis","","1","€25.00","Yes","Jan Reyniers","No","","","25.00","Item","14.090000000","CB","Boeken","Non-fictie","","","","","","","",""
 `;
 
+const CB_INTAKE_CSV = `EAN,Description,Brand,SKU,tag,aankoopprijs,verkoopprijs,leverancier,btw,gewenste voorraad,herbestellingspunt
+9789083436999,Vrouwen die oorlog zien,Victoria Amelina,,nederlands,19.2,30.00,CB,Item,1,0
+9789493399556,Het gore lef,Sarah Arnolds,,nederlands,12.74,22.50,CB,Item,1,0
+`;
+
 describe("lib/runs", () => {
   useTmpEnv();
 
@@ -115,5 +120,47 @@ describe("lib/runs", () => {
 
     expect(getRun("does-not-exist")).toBeUndefined();
     await expect(processRunSync("does-not-exist")).rejects.toThrow(/not found/);
+  });
+
+  it("detects R-Series format on the sample CSV and persists it on the run", async () => {
+    const { createRun, getRun } = await import("../../src/lib/runs");
+    const { runId, format } = await createRun({ fileName: "sample.csv", content: SAMPLE_CSV });
+    expect(format).toBe("r-series");
+    expect(getRun(runId)?.format).toBe("r-series");
+  });
+
+  it("createRun also accepts a CB-intake template end-to-end", async () => {
+    const { createRun, processRunSync, getLatestExportPath, getRun } = await import(
+      "../../src/lib/runs"
+    );
+
+    const created = await createRun({ fileName: "cb-intake.csv", content: CB_INTAKE_CSV });
+    expect(created.format).toBe("cb-intake");
+    expect(created.totalBooks).toBe(2);
+
+    const result = await processRunSync(created.runId);
+    expect(result.processedBooks).toBe(2);
+    expect(result.failedBooks).toBe(0);
+
+    expect(getRun(created.runId)?.format).toBe("cb-intake");
+
+    const path = getLatestExportPath(created.runId);
+    if (!path) throw new Error("export not written");
+    const csv = readFileSync(path, "utf8");
+
+    // The CB-intake `Description` column should land in NL_Title_Short.
+    expect(csv).toContain("Vrouwen die oorlog zien");
+    expect(csv).toContain("Het gore lef");
+    // And the EAN should come through (via `cb.ean` fallback in the mapping).
+    expect(csv).toContain("9789083436999");
+  });
+
+  it("createRun throws UnknownInputFormatError when the header row matches no known format", async () => {
+    const { createRun, UnknownInputFormatError } = await import("../../src/lib/runs");
+
+    const csv = "foo,bar,baz\n1,2,3\n";
+    await expect(createRun({ fileName: "weird.csv", content: csv })).rejects.toBeInstanceOf(
+      UnknownInputFormatError,
+    );
   });
 });

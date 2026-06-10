@@ -29,10 +29,14 @@
     {
       "name": "NL_Title_Short",
       "type": "field",
-      "from": "rseries.item",
+      "from": ["rseries.item", "cb.description"],
       "transform": { "truncate": 80 }
     },
-    { "name": "NL_Title_Long", "type": "field", "from": ["enriched.titleLong", "rseries.item"] },
+    {
+      "name": "NL_Title_Long",
+      "type": "field",
+      "from": ["enriched.titleLong", "rseries.item", "cb.description"]
+    },
     {
       "name": "NL_Description_Short",
       "type": "field",
@@ -53,7 +57,7 @@
     { "name": "Stock_Min", "type": "constant", "value": "0" },
     { "name": "Stock_Alert", "type": "ignore" },
     { "name": "Article_Code", "type": "ignore" },
-    { "name": "EAN", "type": "field", "from": "rseries.ean" },
+    { "name": "EAN", "type": "field", "from": ["rseries.ean", "cb.ean"] },
     { "name": "SKU", "type": "ignore" },
     {
       "name": "Weight",

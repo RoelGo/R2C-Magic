@@ -10,11 +10,12 @@ export default function Home() {
     <div className="space-y-10">
       <section className="space-y-3">
         <header>
-          <h2 className="text-2xl font-semibold">Upload an R-Series export</h2>
+          <h2 className="text-2xl font-semibold">Upload a book CSV</h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            R2C Magic parses your CSV, applies the mapping, and produces a C-Series-ready import
-            file. Enrichment against online sources lands in milestone M2 — for now every enriched
-            column is blank and only R-Series fields are populated.
+            R2C Magic accepts either a Lightspeed R-Series export or the rokko CB intake template,
+            applies the mapping, and produces a C-Series-ready import file. The format is detected
+            from the header row. Enrichment against online sources lands in milestone M2 — for now
+            every enriched column is blank.
           </p>
         </header>
         <UploadDropzone />

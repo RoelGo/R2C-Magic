@@ -15,6 +15,11 @@ const STATUS_STYLES: Record<string, string> = {
   failed: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
+const FORMAT_LABEL: Record<string, string> = {
+  "r-series": "R-Series export",
+  "cb-intake": "CB intake template",
+};
+
 export default async function RunDetailPage({ params }: Props) {
   const { id } = await params;
   const run = getRun(id);
@@ -45,20 +50,22 @@ export default async function RunDetailPage({ params }: Props) {
       </header>
 
       <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Stat label="Format" value={FORMAT_LABEL[run.format] ?? run.format} />
         <Stat label="Books" value={String(run.totalBooks)} />
         <Stat label="Processed" value={`${run.processedBooks} / ${run.totalBooks}`} />
         <Stat label="Failed" value={String(run.failedBooks)} />
-        <Stat
-          label="Uploaded"
-          value={new Date(run.uploadedAt).toLocaleString(undefined, {
-            year: "numeric",
-            month: "short",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        />
       </dl>
+
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Uploaded{" "}
+        {new Date(run.uploadedAt).toLocaleString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </p>
 
       <section className="space-y-3 rounded-lg border border-slate-200 p-6 dark:border-slate-800">
         <h3 className="text-lg font-semibold">C-Series export</h3>

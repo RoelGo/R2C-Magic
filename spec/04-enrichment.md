@@ -105,13 +105,16 @@ With `sourcePriority: ["cb", "kb-sru", "google-books", "open-library"]` and
 For one book:
 
 ```ts
-async function enrichBook(rSeries: RSeriesRow, mapping: MappingConfig): Promise<EnrichedBook>
+async function enrichBook(source: BookSource, mapping: MappingConfig): Promise<EnrichedBook>
 ```
 
+- Accepts a `BookSource` (the discriminated union: either an R-Series row
+  or a CB-intake row) so enrichment works the same way regardless of
+  which CSV the user uploaded. The EAN is read off the active branch.
 - Creates one `AbortController` with `ENRICH_TIMEOUT_MS` per source.
 - Calls every `enabledSources()` adapter in parallel via `Promise.all`.
 - Catches per-source errors, records them in `errors`, **never throws**.
-- Hands `(rSeries, perSource, errors)` to the merger.
+- Hands `(source, perSource, errors)` to the merger.
 - Returns the merged `EnrichedBook`.
 
 The orchestrator does **not** persist anything or talk to the queue — those

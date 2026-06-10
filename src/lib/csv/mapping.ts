@@ -33,23 +33,39 @@ export function reloadMappingConfig(path: string = DEFAULT_PATH): MappingConfig 
 // ----------------------------------------------------------------------------
 
 /**
- * Resolve a dotted path like `enriched.descriptionShort`, `rseries.brand`,
- * `rseries.subcategory.0` against an EnrichedBook. Returns undefined when any
- * segment is missing.
+ * Resolve a dotted path against an EnrichedBook. Supported roots:
+ *   - `enriched.<field>`         — fields populated by online enrichment.
+ *   - `rseries.<field>`          — R-Series raw fields (only when the upload
+ *                                  is an R-Series export; otherwise undefined).
+ *   - `rseries.subcategory.<n>`  — index into the R-Series subcategory list.
+ *   - `cb.<field>`               — CB-intake raw fields (only when the upload
+ *                                  is a CB-intake template; otherwise undefined).
+ *
+ * A path that doesn't apply to the current row's input format simply returns
+ * undefined, which lets a `from: ["enriched.x", "rseries.y", "cb.z"]` chain
+ * naturally pick whichever input is available.
  */
 export function resolveFieldPath(book: EnrichedBook, path: string): unknown {
   const [root, ...rest] = path.split(".");
 
   let cursor: unknown;
-  if (root === "enriched") cursor = book;
-  else if (root === "rseries") cursor = book.rSeries;
-  else return undefined;
+  if (root === "enriched") {
+    cursor = book;
+  } else if (root === "rseries") {
+    if (book.source.kind !== "r-series") return undefined;
+    cursor = book.source.rSeries;
+  } else if (root === "cb") {
+    if (book.source.kind !== "cb-intake") return undefined;
+    cursor = book.source.cb;
+  } else {
+    return undefined;
+  }
 
   for (const segment of rest) {
     if (cursor == null) return undefined;
-    if (segment === "subcategory" && root === "rseries") {
-      // rseries.subcategory.<n> -> book.rSeries.subcategories[n]
-      cursor = book.rSeries.subcategories;
+    if (segment === "subcategory" && root === "rseries" && book.source.kind === "r-series") {
+      // rseries.subcategory.<n> -> book.source.rSeries.subcategories[n]
+      cursor = book.source.rSeries.subcategories;
       continue;
     }
     if (Array.isArray(cursor)) {

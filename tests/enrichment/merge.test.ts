@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadMappingConfig } from "../../src/lib/csv/mapping";
 import { mergeEnrichments } from "../../src/lib/enrichment/merge";
-import type { RSeriesRow } from "../../src/types/book";
+import type { BookSource, RSeriesRow } from "../../src/types/book";
 
 const rSeries: RSeriesRow = {
   systemId: "1",
@@ -12,6 +12,7 @@ const rSeries: RSeriesRow = {
   category: "Boeken",
   subcategories: [],
 };
+const source: BookSource = { kind: "r-series", rSeries };
 
 describe("mergeEnrichments", () => {
   const config = loadMappingConfig();
@@ -19,7 +20,7 @@ describe("mergeEnrichments", () => {
   it("picks the first non-empty source per field according to fieldPriority", () => {
     const merged = mergeEnrichments(
       {
-        rSeries,
+        source,
         perSource: {
           "open-library": { titleLong: "from open-library" },
           "google-books": { titleLong: "from google" },
@@ -37,7 +38,7 @@ describe("mergeEnrichments", () => {
   it("falls back through the priority list when higher-priority sources are empty", () => {
     const merged = mergeEnrichments(
       {
-        rSeries,
+        source,
         perSource: {
           "open-library": { descriptionLong: "fallback" },
         },
@@ -52,7 +53,7 @@ describe("mergeEnrichments", () => {
   it("merges and dedups coverImageUrls across sources", () => {
     const merged = mergeEnrichments(
       {
-        rSeries,
+        source,
         perSource: {
           "google-books": { coverImageUrls: ["a", "b"] },
           "open-library": { coverImageUrls: ["b", "c"] },
@@ -68,7 +69,7 @@ describe("mergeEnrichments", () => {
   it("passes through errors", () => {
     const merged = mergeEnrichments(
       {
-        rSeries,
+        source,
         perSource: {},
         errors: [{ source: "google-books", message: "boom" }],
       },

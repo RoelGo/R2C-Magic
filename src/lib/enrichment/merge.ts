@@ -1,4 +1,4 @@
-import type { EnrichedBook, EnrichmentSourceId, RSeriesRow } from "@/types/book";
+import type { BookSource, EnrichedBook, EnrichmentSourceId } from "@/types/book";
 import type { MappingConfig } from "../csv/mapping-schema";
 import type { PartialEnrichment } from "./sources/source";
 
@@ -15,17 +15,19 @@ import type { PartialEnrichment } from "./sources/source";
  *    across all sources in priority order, dedup preserving first-seen.
  */
 export interface MergeInput {
-  rSeries: RSeriesRow;
+  /** The raw upload row + its format kind. */
+  source: BookSource;
   perSource: Partial<Record<EnrichmentSourceId, PartialEnrichment>>;
   errors: EnrichedBook["errors"];
 }
 
 export function mergeEnrichments(input: MergeInput, config: MappingConfig): EnrichedBook {
-  const { rSeries, perSource, errors } = input;
+  const { source, perSource, errors } = input;
+  const ean = source.kind === "r-series" ? source.rSeries.ean : source.cb.ean;
   const fieldSources: EnrichedBook["fieldSources"] = {};
   const out: EnrichedBook = {
-    ean: rSeries.ean,
-    rSeries,
+    ean,
+    source,
     fieldSources,
     errors,
   };
@@ -61,7 +63,7 @@ export function mergeEnrichments(input: MergeInput, config: MappingConfig): Enri
     }
 
     for (const sourceId of policy) {
-      if (sourceId === "r-series") continue; // r-series is the rSeries object, not a partial
+      if (sourceId === "r-series") continue; // r-series is not a partial enrichment, it's the raw row
       const candidate = perSource[sourceId]?.[field];
       if (isPresent(candidate)) {
         // biome-ignore lint/suspicious/noExplicitAny: dynamic field assignment

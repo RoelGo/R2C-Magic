@@ -6,14 +6,17 @@ import type { EnrichedBook } from "../../src/types/book";
 function sampleBook(): EnrichedBook {
   return {
     ean: "9789462673359",
-    rSeries: {
-      systemId: "210000000001",
-      ean: "9789462673359",
-      item: "Het begin van mijn leven was toen ik nog niet bestond",
-      brand: "Fatima en Helen",
-      vendor: "EPO",
-      category: "Boeken",
-      subcategories: ["Non-fictie"],
+    source: {
+      kind: "r-series",
+      rSeries: {
+        systemId: "210000000001",
+        ean: "9789462673359",
+        item: "Het begin van mijn leven was toen ik nog niet bestond",
+        brand: "Fatima en Helen",
+        vendor: "EPO",
+        category: "Boeken",
+        subcategories: ["Non-fictie"],
+      },
     },
     titleLong: "Het begin van mijn leven was toen ik nog niet bestond",
     descriptionShort: "Een poëtisch boek over identiteit.",

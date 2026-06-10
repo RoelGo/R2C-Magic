@@ -15,11 +15,16 @@ const STATUS_STYLES: Record<RunSummary["status"], string> = {
   failed: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
+const FORMAT_LABEL: Record<RunSummary["format"], string> = {
+  "r-series": "R-Series",
+  "cb-intake": "CB intake",
+};
+
 export function RunTable({ runs }: { runs: RunSummary[] }) {
   if (runs.length === 0) {
     return (
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        No runs yet. Upload an R-Series CSV above to create the first one.
+        No runs yet. Upload an R-Series export or CB intake template above to create the first one.
       </p>
     );
   }
@@ -31,6 +36,7 @@ export function RunTable({ runs }: { runs: RunSummary[] }) {
           <tr>
             <th className="px-4 py-2 font-medium">Uploaded</th>
             <th className="px-4 py-2 font-medium">File</th>
+            <th className="px-4 py-2 font-medium">Format</th>
             <th className="px-4 py-2 font-medium">Status</th>
             <th className="px-4 py-2 font-medium text-right">Books</th>
             <th className="px-4 py-2 font-medium text-right">Failed</th>
@@ -45,6 +51,9 @@ export function RunTable({ runs }: { runs: RunSummary[] }) {
               </td>
               <td className="px-4 py-2 font-mono text-xs text-slate-700 dark:text-slate-300">
                 {r.sourceFileName}
+              </td>
+              <td className="px-4 py-2 text-slate-700 dark:text-slate-300">
+                {FORMAT_LABEL[r.format]}
               </td>
               <td className="px-4 py-2">
                 <span

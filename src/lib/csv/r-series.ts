@@ -41,13 +41,13 @@ const rawRowSchema = z.object({
   "Subcategory 9": z.string().optional().default(""),
 });
 
-export interface ParseResult {
-  rows: RSeriesRow[];
+export interface ParseResult<TRow = RSeriesRow> {
+  rows: TRow[];
   /** Rows that failed validation, with the original row index (header = 0). */
   invalid: Array<{ rowIndex: number; reason: string; raw: Record<string, unknown> }>;
 }
 
-export function parseRSeriesCsv(content: string): ParseResult {
+export function parseRSeriesCsv(content: string): ParseResult<RSeriesRow> {
   const parsed = Papa.parse<Record<string, string>>(content, {
     header: true,
     skipEmptyLines: true,
@@ -55,7 +55,7 @@ export function parseRSeriesCsv(content: string): ParseResult {
   });
 
   const rows: RSeriesRow[] = [];
-  const invalid: ParseResult["invalid"] = [];
+  const invalid: ParseResult<RSeriesRow>["invalid"] = [];
 
   parsed.data.forEach((rec, i) => {
     const result = rawRowSchema.safeParse(rec);

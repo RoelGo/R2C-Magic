@@ -2,12 +2,17 @@ import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
- * `runs` — one row per uploaded R-series CSV. Tracks lifecycle and counts.
+ * `runs` — one row per uploaded book CSV. Tracks lifecycle, counts, and the
+ * detected input format (R-Series export or CB-intake template).
  */
 export const runs = sqliteTable("runs", {
   id: text("id").primaryKey(), // ULID
   sourceFileName: text("source_file_name").notNull(),
   sourceFilePath: text("source_file_path").notNull(),
+  /** Which CSV shape the upload was — used to pick the right parser. */
+  format: text("format", { enum: ["r-series", "cb-intake"] })
+    .notNull()
+    .default("r-series"),
   uploadedAt: integer("uploaded_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),
@@ -22,7 +27,9 @@ export const runs = sqliteTable("runs", {
 
 /**
  * `books` — one row per book in an uploaded run.
- * `rSeriesPayload` stores the original R-series row as JSON for audit/replay.
+ * `sourcePayload` stores the parsed upload row as a `BookSource` discriminated
+ * union (`{ kind: "r-series", rSeries: {...} } | { kind: "cb-intake", cb: {...} }`)
+ * so the format is recoverable for audit/replay without consulting the run.
  */
 export const books = sqliteTable("books", {
   id: text("id").primaryKey(), // ULID
@@ -30,7 +37,7 @@ export const books = sqliteTable("books", {
     .notNull()
     .references(() => runs.id, { onDelete: "cascade" }),
   ean: text("ean").notNull(),
-  rSeriesPayload: text("r_series_payload", { mode: "json" }).notNull(),
+  sourcePayload: text("source_payload", { mode: "json" }).notNull(),
   enrichedPayload: text("enriched_payload", { mode: "json" }),
   status: text("status", { enum: ["pending", "enriching", "done", "failed"] })
     .notNull()

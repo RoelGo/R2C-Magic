@@ -2,8 +2,9 @@
 
 ## Goal
 
-Build a self-hostable web app that takes a Lightspeed **R-Series** book item
-export CSV, enriches every book by ISBN/EAN against several online catalogs,
+Build a self-hostable web app that takes a Lightspeed book CSV — either an
+**R-Series** export or the rokko **CB-intake** template that employees fill
+in by hand — enriches every book by ISBN/EAN against several online catalogs,
 and produces a Lightspeed **C-Series** import CSV that the rokko bookshop
 coop can feed into their webshop with zero manual data entry per book.
 
@@ -44,6 +45,7 @@ that led to M0. Future PRs should not silently reverse them.
 | 12 | **Web framework: Next.js 15 (App Router)** | User accepted recommendation |
 | 13 | **Deployment: Docker primary, desktop binary later** | User answer |
 | 14 | **Ignored C-Series columns** (written blank): `Supplier, Price, Price_Old, Price_Cost, Price_Unit, Unit, Tax, Stock_Level, Stock_Alert, Article_Code, SKU, Volume, Colli, Size_X, Size_Y, Size_Z, Buy_Min, Buy_Max, Tags` | User answer (with `*` wildcard expanded) |
+| 15 | **Support both R-Series and CB-intake input formats side by side**, auto-detected from the header row. CB-intake is the hand-curated Google Sheets template rokko employees fill in for new titles | User answer (follow-up) |
 
 ## Tech stack
 

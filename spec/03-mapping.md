@@ -10,8 +10,12 @@ how to extend it.
 
 ## Input shapes
 
+R2C Magic accepts **two** input formats. The right parser is dispatched by
+`src/lib/csv/format-detect.ts`, which sniffs the header row.
+
 ### R-Series export (`imports/item_listings_local_matches.csv`)
 
+- **Detection**: header row contains `System ID` and `Item`.
 - **Delimiter**: comma
 - **Quoting**: every field quoted with `"`
 - **Line ending**: LF
@@ -19,6 +23,24 @@ how to extend it.
   Vendor ID, Qty., Price, Tax, Brand, Publish to eCom, Season, Department,
   MSRP, Tax Class, Default Cost, Vendor, Category, Subcategory 1..9`
 - `EAN` is the join key for enrichment. We require a valid 13-digit ISBN-13.
+
+### CB-intake template (`imports/Kopie van sjabloon invoer CB lightspeed - sjabloon.csv`)
+
+The Google Sheets template rokko employees fill in by hand for new titles
+they want to order via Centraal Boekhuis (CB). The titles in this file have
+no Lightspeed System ID yet — they exist only as buying intent.
+
+- **Detection**: header row contains `EAN` plus at least one of
+  `aankoopprijs`, `verkoopprijs`, `gewenste voorraad`, `herbestellingspunt`.
+- **Delimiter**: comma
+- **Quoting**: none (the sheet exports cleanly without quotes)
+- **Line ending**: LF
+- **Columns** (11): `EAN, Description, Brand, SKU, tag, aankoopprijs,
+  verkoopprijs, leverancier, btw, gewenste voorraad, herbestellingspunt`
+- **Header note**: `Brand` in this template holds the **author**, not the
+  publisher (rokko convention). Don't alias it into the C-Series `Brand`
+  column blindly — that column is the publisher.
+- `EAN` is the join key. Same 13-digit ISBN-13 requirement.
 
 ### C-Series import (`templates/import-products.csv`)
 
@@ -69,10 +91,21 @@ Each entry in `columns` is exactly one of:
 ### `from` paths
 
 - `rseries.<lowerCamelField>` — reads `RSeriesRow.<field>`, e.g.
-  `rseries.brand`, `rseries.category`, `rseries.item`.
+  `rseries.brand`, `rseries.category`, `rseries.item`. Resolves to
+  `undefined` for CB-intake rows.
 - `rseries.subcategory.<n>` — reads `RSeriesRow.subcategories[n]` (0-indexed).
+  Resolves to `undefined` for CB-intake rows.
+- `cb.<lowerCamelField>` — reads `CbIntakeRow.<field>`, e.g.
+  `cb.description`, `cb.brand`, `cb.ean`. Resolves to `undefined` for
+  R-Series rows.
 - `enriched.<field>` — reads the top-level `EnrichedBook` field, e.g.
   `enriched.titleLong`, `enriched.descriptionShort`, `enriched.publisher`.
+  Always available regardless of input format.
+
+A single column can list both `rseries.*` and `cb.*` paths in its `from`
+fallback chain — the path for the wrong format simply returns `undefined`
+and the chain moves on. Example: `"from": ["enriched.titleLong",
+"rseries.item", "cb.description"]` works for both input formats.
 
 ### `transform` (optional, only on `field` columns)
 
@@ -141,8 +174,8 @@ Legend: ✏️ = actively mapped, 🗑️ = `ignore` (written blank).
 | 1  | `Visible`                | ✏️ constant `Y` | — | New items visible immediately |
 | 2  | `Brand`                  | ✏️ `enriched.publisher` ∥ `rseries.brand` | blank | For books, "Brand" = uitgever |
 | 3  | `Supplier`               | 🗑️ ignore | blank | Handled by C-side merge |
-| 4  | `NL_Title_Short`         | ✏️ `rseries.item` (truncated 80) | required | |
-| 5  | `NL_Title_Long`          | ✏️ `enriched.titleLong` ∥ `rseries.item` | rseries.item | |
+| 4  | `NL_Title_Short`         | ✏️ `rseries.item` ∥ `cb.description` (truncated 80) | required | |
+| 5  | `NL_Title_Long`          | ✏️ `enriched.titleLong` ∥ `rseries.item` ∥ `cb.description` | rseries.item / cb.description | |
 | 6  | `NL_Description_Short`   | ✏️ `enriched.descriptionShort` (stripHtml, 200) | blank | |
 | 7  | `NL_Description_Long`    | ✏️ `enriched.descriptionLong` (HTML allowed) | blank | |
 | 8  | `NL_Variant`             | ✏️ constant `Default` | — | |
@@ -158,7 +191,7 @@ Legend: ✏️ = actively mapped, 🗑️ = `ignore` (written blank).
 | 18 | `Stock_Min`              | ✏️ constant `0` | — | |
 | 19 | `Stock_Alert`            | 🗑️ ignore | blank | |
 | 20 | `Article_Code`           | 🗑️ ignore | blank | |
-| 21 | `EAN`                    | ✏️ `rseries.ean` | required | Lookup key |
+| 21 | `EAN`                    | ✏️ `rseries.ean` ∥ `cb.ean` | required | Lookup key |
 | 22 | `SKU`                    | 🗑️ ignore | blank | |
 | 23 | `Weight`                 | ✏️ `enriched.weightGrams` (÷1000) | blank | kg |
 | 24 | `Volume`                 | 🗑️ ignore | blank | |

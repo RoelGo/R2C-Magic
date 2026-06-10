@@ -24,9 +24,22 @@ export function computeColumn(
 }
 
 function metaTitle(book: EnrichedBook): string {
-  const title = book.titleShort ?? book.rSeries.item;
+  const title = book.titleShort ?? rawTitle(book);
   const author = book.authors?.[0];
   return author ? `${title} – ${author}` : title;
+}
+
+/**
+ * Fall back to the raw upload row's title field when no enriched title is
+ * available. Each input format names this differently.
+ */
+function rawTitle(book: EnrichedBook): string {
+  switch (book.source.kind) {
+    case "r-series":
+      return book.source.rSeries.item;
+    case "cb-intake":
+      return book.source.cb.description ?? "";
+  }
 }
 
 function metaKeywords(book: EnrichedBook): string {

@@ -5,14 +5,17 @@ import type { EnrichedBook } from "../../src/types/book";
 function makeBook(overrides: Partial<EnrichedBook> = {}): EnrichedBook {
   return {
     ean: "9789462673359",
-    rSeries: {
-      systemId: "210000000001",
-      ean: "9789462673359",
-      item: "Het begin van mijn leven was toen ik nog niet bestond",
-      brand: "Fatima en Helen",
-      vendor: "EPO",
-      category: "Boeken",
-      subcategories: ["Non-fictie", "Filosofie"],
+    source: {
+      kind: "r-series",
+      rSeries: {
+        systemId: "210000000001",
+        ean: "9789462673359",
+        item: "Het begin van mijn leven was toen ik nog niet bestond",
+        brand: "Fatima en Helen",
+        vendor: "EPO",
+        category: "Boeken",
+        subcategories: ["Non-fictie", "Filosofie"],
+      },
     },
     titleLong: "Het begin van mijn leven was toen ik nog niet bestond",
     descriptionShort: "Een poëtisch boek.",
@@ -29,6 +32,7 @@ function makeBook(overrides: Partial<EnrichedBook> = {}): EnrichedBook {
 
 describe("resolveFieldPath", () => {
   const book = makeBook();
+  const rSeries = book.source.kind === "r-series" ? book.source.rSeries : undefined;
 
   it("reads top-level enriched fields", () => {
     expect(resolveFieldPath(book, "enriched.titleLong")).toBe(book.titleLong);
@@ -38,7 +42,7 @@ describe("resolveFieldPath", () => {
   it("reads R-series fields", () => {
     expect(resolveFieldPath(book, "rseries.brand")).toBe("Fatima en Helen");
     expect(resolveFieldPath(book, "rseries.category")).toBe("Boeken");
-    expect(resolveFieldPath(book, "rseries.item")).toBe(book.rSeries.item);
+    expect(resolveFieldPath(book, "rseries.item")).toBe(rSeries?.item);
   });
 
   it("indexes into rseries.subcategory.N", () => {
@@ -50,6 +54,35 @@ describe("resolveFieldPath", () => {
   it("returns undefined for unknown roots and missing segments", () => {
     expect(resolveFieldPath(book, "rseries.unknown")).toBeUndefined();
     expect(resolveFieldPath(book, "weird.path")).toBeUndefined();
+    // cb.* paths resolve to undefined when the source is r-series.
+    expect(resolveFieldPath(book, "cb.description")).toBeUndefined();
+  });
+
+  it("reads cb-intake fields when the source kind is cb-intake", () => {
+    const cbBook: EnrichedBook = {
+      ean: "9789083436999",
+      source: {
+        kind: "cb-intake",
+        cb: {
+          ean: "9789083436999",
+          description: "Vrouwen die oorlog zien",
+          brand: "Victoria Amelina",
+          supplier: "CB",
+          purchasePrice: "19.2",
+          sellPrice: "30.00",
+          desiredStock: 1,
+          reorderPoint: 0,
+        },
+      },
+      fieldSources: {},
+      errors: [],
+    };
+    expect(resolveFieldPath(cbBook, "cb.description")).toBe("Vrouwen die oorlog zien");
+    expect(resolveFieldPath(cbBook, "cb.brand")).toBe("Victoria Amelina");
+    expect(resolveFieldPath(cbBook, "cb.ean")).toBe("9789083436999");
+    // rseries.* paths resolve to undefined when the source is cb-intake.
+    expect(resolveFieldPath(cbBook, "rseries.item")).toBeUndefined();
+    expect(resolveFieldPath(cbBook, "rseries.subcategory.0")).toBeUndefined();
   });
 });
 

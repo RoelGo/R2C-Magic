@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "R2C Magic",
-  description: "Enrich Lightspeed R-Series book exports for the C-Series webshop.",
+  description: "Enrich Lightspeed book CSVs (R-Series or CB intake) for the C-Series webshop.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="mx-auto max-w-5xl px-6 py-4">
             <h1 className="text-xl font-semibold">R2C Magic</h1>
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              R-Series → C-Series book metadata enricher
+              R-Series / CB intake → C-Series book metadata enricher
             </p>
           </div>
         </header>

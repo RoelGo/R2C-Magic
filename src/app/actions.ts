@@ -1,6 +1,6 @@
 "use server";
 
-import { createRun, processRunSync } from "@/lib/runs";
+import { UnknownInputFormatError, createRun, processRunSync } from "@/lib/runs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -12,7 +12,8 @@ export interface UploadActionResult {
 }
 
 /**
- * Server action: accept a multipart upload of an R-Series CSV, create a run,
+ * Server action: accept a multipart upload of a book CSV (R-Series export or
+ * CB-intake template — format is detected from the header row), create a run,
  * process it synchronously (M1: no enrichment, just mapping), and redirect to
  * the run detail page. Returns a result object only on validation failure —
  * the happy path throws via `redirect()`.
@@ -44,10 +45,19 @@ export async function uploadRunAction(formData: FormData): Promise<UploadActionR
   }
 
   const content = await file.text();
-  const { runId, totalBooks } = await createRun({
-    fileName: file.name,
-    content,
-  });
+
+  let runId: string;
+  let totalBooks: number;
+  try {
+    const result = await createRun({ fileName: file.name, content });
+    runId = result.runId;
+    totalBooks = result.totalBooks;
+  } catch (err) {
+    if (err instanceof UnknownInputFormatError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
 
   if (totalBooks === 0) {
     return {

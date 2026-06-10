@@ -68,10 +68,12 @@ export function UploadDropzone() {
           disabled={isPending}
         />
         <p className="text-base font-medium text-slate-800 dark:text-slate-100">
-          {isPending ? `Processing ${fileName ?? "upload"}…` : "Drop an R-Series CSV here"}
+          {isPending ? `Processing ${fileName ?? "upload"}…` : "Drop a book CSV here"}
         </p>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          {isPending ? "Hang on, this should be quick." : "or click to choose a file (max 20 MB)"}
+          {isPending
+            ? "Hang on, this should be quick."
+            : "R-Series export or CB intake template — click to choose (max 20 MB)"}
         </p>
         {fileName && !isPending ? (
           <p className="mt-3 text-xs text-slate-500">Last selected: {fileName}</p>
