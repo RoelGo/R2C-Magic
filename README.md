@@ -38,6 +38,9 @@ Failed lookups are not fatal: the row goes out with the data we do have, and
 the reason for the miss lands in the `_enrichment_errors` column so a human
 can patch the gaps later.
 
+> Full design rationale, mapping reference, and milestone plan live in
+> [`spec/`](./spec/README.md).
+
 ## Tech stack
 
 | Layer | Choice |

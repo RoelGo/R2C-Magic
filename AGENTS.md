@@ -13,6 +13,10 @@ import CSV for the rokko bookshop coop's webshop. The mapping between
 R-Series fields, enriched metadata, and C-Series columns is encoded in
 `mapping.config.json` at the repo root — it is the single source of truth.
 
+> Full design rationale lives in [`spec/`](./spec/README.md). When this file
+> and the spec disagree on **code rules**, this file wins; when they disagree
+> on **design intent**, the spec wins. Surface conflicts rather than guessing.
+
 ## Tech stack
 
 - **Node.js 20 LTS**, **TypeScript 5.7 strict** (`noUncheckedIndexedAccess`)
