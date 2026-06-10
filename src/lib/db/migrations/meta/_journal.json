@@ -15,6 +15,13 @@
       "when": 1781090806075,
       "tag": "0001_add_format_and_rename_payload",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1781094000000,
+      "tag": "0002_enrichment_cache_status_and_error",
+      "breakpoints": true
     }
   ]
 }

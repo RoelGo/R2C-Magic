@@ -14,10 +14,26 @@ const schema = z.object({
 
   ENRICH_CONCURRENCY: z.coerce.number().int().positive().default(5),
   ENRICH_CACHE_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  /**
+   * Shorter TTL for cached *errors* (network failures, 429, 5xx) so
+   * transient outages don't permanently lock a book out of enrichment.
+   * Hits and "not found" results still respect ENRICH_CACHE_TTL_DAYS.
+   */
+  ENRICH_ERROR_CACHE_TTL_HOURS: z.coerce.number().int().positive().default(6),
   ENRICH_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 
   GOOGLE_BOOKS_API_KEY: z.string().optional(),
   OPEN_LIBRARY_USER_AGENT: z.string().default("r2c-magic/0.1 (mailto:tech@rokko.coop)"),
+
+  /**
+   * Master kill-switch for online enrichment. Defaults to true. Tests set
+   * this to false in `tests/helpers/tmp-env.ts` so the queue does not
+   * fan out to live APIs while running the suite.
+   */
+  ENRICHMENT_ENABLED: z
+    .string()
+    .default("true")
+    .transform((v) => v.toLowerCase() !== "false"),
 
   INCLUDE_ERROR_COLUMN: z
     .string()

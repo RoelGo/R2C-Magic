@@ -65,6 +65,13 @@ export const enrichments = sqliteTable("enrichments", {
 /**
  * `enrichment_cache` — global, source-keyed cache by EAN so multiple runs
  * for the same titles don't re-hit external APIs.
+ *
+ * Cached rows can represent any of three outcomes:
+ *  - **hit**: `payload` is the source's `FetchResult.data` (may be `{}` for
+ *    a "not found" response — we cache misses so we don't retry next run).
+ *  - **error**: `payload` is null and `error` carries the thrown message.
+ *    Errors are still TTL'd so transient 5xx / 429 don't permanently lock
+ *    a book out of enrichment.
  */
 export const enrichmentCache = sqliteTable(
   "enrichment_cache",
@@ -72,6 +79,8 @@ export const enrichmentCache = sqliteTable(
     source: text("source").notNull(),
     ean: text("ean").notNull(),
     payload: text("payload", { mode: "json" }),
+    httpStatus: integer("http_status"),
+    error: text("error"),
     fetchedAt: integer("fetched_at", { mode: "timestamp_ms" })
       .notNull()
       .default(sql`(unixepoch() * 1000)`),

@@ -15,9 +15,8 @@ describe("M1 end-to-end against the rokko CB-intake sample", () => {
   it.runIf(existsSync(REAL_SAMPLE))(
     "uploading the CB-intake template produces an export with one row per book",
     async () => {
-      const { createRun, processRunSync, getLatestExportPath, getRun } = await import(
-        "../../src/lib/runs"
-      );
+      const { createRun, getLatestExportPath, getRun } = await import("../../src/lib/runs");
+      const { processRunInline } = await import("../../src/lib/jobs/run");
 
       const content = readFileSync(REAL_SAMPLE, "utf8");
       const created = await createRun({
@@ -29,12 +28,11 @@ describe("M1 end-to-end against the rokko CB-intake sample", () => {
       expect(created.format).toBe("cb-intake");
       expect(created.totalBooks).toBeGreaterThan(10);
 
-      const result = await processRunSync(created.runId);
-      expect(result.processedBooks).toBe(created.totalBooks);
-      expect(result.failedBooks).toBe(0);
-
-      // Run summary surfaces the format too — confirms it round-trips through DB.
+      const result = await processRunInline(created.runId);
+      expect(result.status).toBe("completed");
       const run = getRun(created.runId);
+      expect(run?.processedBooks).toBe(created.totalBooks);
+      expect(run?.failedBooks).toBe(0);
       expect(run?.format).toBe("cb-intake");
 
       const path = getLatestExportPath(created.runId);

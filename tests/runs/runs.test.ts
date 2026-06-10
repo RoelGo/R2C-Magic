@@ -44,31 +44,32 @@ describe("lib/runs", () => {
     expect(path.startsWith(getTmpDir())).toBe(true);
   });
 
-  it("processRunSync writes a C-Series export and marks the run completed", async () => {
-    const { createRun, processRunSync, getRun, getLatestExportPath } = await import(
-      "../../src/lib/runs"
-    );
+  it("processRunInline writes a C-Series export and marks the run completed", async () => {
+    const { createRun, getRun, getLatestExportPath } = await import("../../src/lib/runs");
+    const { processRunInline } = await import("../../src/lib/jobs/run");
 
     const { runId } = await createRun({ fileName: "sample.csv", content: SAMPLE_CSV });
-    const result = await processRunSync(runId);
+    const result = await processRunInline(runId);
 
-    expect(result.processedBooks).toBe(2);
-    expect(result.failedBooks).toBe(0);
-    expect(existsSync(result.exportPath)).toBe(true);
+    expect(result.status).toBe("completed");
+    const { exportPath } = result;
+    if (!exportPath) throw new Error("export path missing");
+    expect(existsSync(exportPath)).toBe(true);
 
     const run = getRun(runId);
     expect(run?.status).toBe("completed");
     expect(run?.processedBooks).toBe(2);
     expect(run?.exportCount).toBe(1);
 
-    expect(getLatestExportPath(runId)).toBe(result.exportPath);
+    expect(getLatestExportPath(runId)).toBe(exportPath);
   });
 
   it("export CSV has a C-Series header row and one data row per book", async () => {
-    const { createRun, processRunSync, getLatestExportPath } = await import("../../src/lib/runs");
+    const { createRun, getLatestExportPath } = await import("../../src/lib/runs");
+    const { processRunInline } = await import("../../src/lib/jobs/run");
 
     const { runId } = await createRun({ fileName: "sample.csv", content: SAMPLE_CSV });
-    await processRunSync(runId);
+    await processRunInline(runId);
 
     const path = getLatestExportPath(runId);
     if (!path) throw new Error("export not written");
@@ -98,15 +99,16 @@ describe("lib/runs", () => {
   });
 
   it("listRuns returns runs ordered newest-first", async () => {
-    const { createRun, processRunSync, listRuns } = await import("../../src/lib/runs");
+    const { createRun, listRuns } = await import("../../src/lib/runs");
+    const { processRunInline } = await import("../../src/lib/jobs/run");
 
     await createRun({ fileName: "first.csv", content: SAMPLE_CSV }).then((r) =>
-      processRunSync(r.runId),
+      processRunInline(r.runId),
     );
     // Brief delay so the second run gets a later uploadedAt timestamp (ms precision).
     await new Promise((r) => setTimeout(r, 10));
     await createRun({ fileName: "second.csv", content: SAMPLE_CSV }).then((r) =>
-      processRunSync(r.runId),
+      processRunInline(r.runId),
     );
 
     const runs = listRuns();
@@ -115,11 +117,12 @@ describe("lib/runs", () => {
     expect(runs[1]?.sourceFileName).toBe("first.csv");
   });
 
-  it("rejects unknown run IDs from getRun and processRunSync", async () => {
-    const { getRun, processRunSync } = await import("../../src/lib/runs");
+  it("getRun returns undefined for unknown IDs; enqueueRun throws", async () => {
+    const { getRun } = await import("../../src/lib/runs");
+    const { enqueueRun } = await import("../../src/lib/jobs/run");
 
     expect(getRun("does-not-exist")).toBeUndefined();
-    await expect(processRunSync("does-not-exist")).rejects.toThrow(/not found/);
+    expect(() => enqueueRun("does-not-exist")).toThrow(/not found/);
   });
 
   it("detects R-Series format on the sample CSV and persists it on the run", async () => {
@@ -130,17 +133,17 @@ describe("lib/runs", () => {
   });
 
   it("createRun also accepts a CB-intake template end-to-end", async () => {
-    const { createRun, processRunSync, getLatestExportPath, getRun } = await import(
-      "../../src/lib/runs"
-    );
+    const { createRun, getLatestExportPath, getRun } = await import("../../src/lib/runs");
+    const { processRunInline } = await import("../../src/lib/jobs/run");
 
     const created = await createRun({ fileName: "cb-intake.csv", content: CB_INTAKE_CSV });
     expect(created.format).toBe("cb-intake");
     expect(created.totalBooks).toBe(2);
 
-    const result = await processRunSync(created.runId);
-    expect(result.processedBooks).toBe(2);
-    expect(result.failedBooks).toBe(0);
+    const result = await processRunInline(created.runId);
+    expect(result.status).toBe("completed");
+    expect(getRun(created.runId)?.processedBooks).toBe(2);
+    expect(getRun(created.runId)?.failedBooks).toBe(0);
 
     expect(getRun(created.runId)?.format).toBe("cb-intake");
 

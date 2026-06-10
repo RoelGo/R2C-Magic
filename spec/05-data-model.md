@@ -185,14 +185,17 @@ Per-source response per book — raw audit trail.
 ### `enrichment_cache`
 
 Global, source-keyed cache by EAN. Survives across runs so re-uploading
-the same titles costs us nothing.
+the same titles costs us nothing. Caches successes, misses (`payload =
+{}`), and errors — the worker consults this before any live call.
 
 | Column | Type | Notes |
 |---|---|---|
 | `source` | text | composite PK |
 | `ean` | text | composite PK |
-| `payload` | json NULL | |
-| `fetched_at` | int (ms epoch) | TTL applied at read time |
+| `payload` | json NULL | `null` for cached errors; `{}` for cached misses; otherwise the source's `FetchResult.data` |
+| `http_status` | int NULL | upstream status code (`null` for thrown errors); added in migration 0002 |
+| `error` | text NULL | thrown message for cached errors; added in migration 0002 |
+| `fetched_at` | int (ms epoch) | TTL applied at read time: `ENRICH_CACHE_TTL_DAYS` for hits + misses, `ENRICH_ERROR_CACHE_TTL_HOURS` for errors |
 
 ### `exports`
 
@@ -216,7 +219,11 @@ Generated C-Series CSVs.
   - `0001_add_format_and_rename_payload.sql` — adds `runs.format`, renames
     `books.r_series_payload` to `books.source_payload`, and re-wraps
     existing payload JSON as a `{ kind: "r-series", rSeries: {...} }`
-    discriminated union
+    discriminated union (M2 dual-format work)
+  - `0002_enrichment_cache_status_and_error.sql` — adds
+    `enrichment_cache.http_status` and `enrichment_cache.error` columns
+    so cached upstream errors can be distinguished from cached misses
+    without re-running the live call (M2 job queue)
 - AGENTS.md hard rule: if `schema.ts` changes, the migration must be
   generated and committed in the same change.
 

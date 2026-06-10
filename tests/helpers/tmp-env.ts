@@ -30,6 +30,11 @@ export function useTmpEnv() {
     env.DATABASE_URL = join(currentTmpDir, "r2c.db");
     env.NODE_ENV = "test";
     env.LOG_LEVEL = "fatal"; // keep tests quiet
+    // Master kill-switch for online enrichment in tests: keeps the queue
+    // from fanning out to Google Books / Open Library while the suite
+    // runs. Individual tests that exercise the live-call path opt back
+    // in by setting `ENRICHMENT_ENABLED=true` before importing modules.
+    env.ENRICHMENT_ENABLED = "false";
     vi.resetModules();
   });
 

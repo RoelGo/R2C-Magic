@@ -13,11 +13,12 @@ describe("GET /api/runs/[id]", () => {
   useTmpEnv();
 
   it("returns the run summary for a known id", async () => {
-    const { createRun, processRunSync } = await import("../../src/lib/runs");
+    const { createRun } = await import("../../src/lib/runs");
+    const { processRunInline } = await import("../../src/lib/jobs/run");
     const { GET } = await import("../../src/app/api/runs/[id]/route");
 
     const { runId } = await createRun({ fileName: "sample.csv", content: SAMPLE_CSV });
-    await processRunSync(runId);
+    await processRunInline(runId);
 
     const response = await GET(new Request(`http://localhost/api/runs/${runId}`), {
       params: paramsOf(runId),
@@ -42,11 +43,12 @@ describe("GET /api/runs/[id]/export", () => {
   useTmpEnv();
 
   it("streams the export CSV with attachment headers", async () => {
-    const { createRun, processRunSync } = await import("../../src/lib/runs");
+    const { createRun } = await import("../../src/lib/runs");
+    const { processRunInline } = await import("../../src/lib/jobs/run");
     const { GET } = await import("../../src/app/api/runs/[id]/export/route");
 
     const { runId } = await createRun({ fileName: "sample.csv", content: SAMPLE_CSV });
-    await processRunSync(runId);
+    await processRunInline(runId);
 
     const response = await GET(new Request(`http://localhost/api/runs/${runId}/export`), {
       params: paramsOf(runId),

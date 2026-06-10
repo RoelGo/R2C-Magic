@@ -1,24 +1,19 @@
 /**
- * Run lifecycle: create from upload, process synchronously, query state.
- *
- * M1 runs the whole pipeline synchronously inside the same request as the
- * upload — there is no enrichment yet, so total work per row is microseconds.
- * M2 will swap `processRunSync` for an enqueue + async worker.
+ * Run lifecycle: create from upload, query state. Processing is handled
+ * by the M2 job queue — see `src/lib/jobs/run.ts` (`enqueueRun`,
+ * `awaitRun`, `processRunInline`).
  */
 import { writeFile } from "node:fs/promises";
-import { booksToCsv } from "@/lib/csv/c-series";
 import { parseCbIntakeCsv } from "@/lib/csv/cb-intake";
 import { detectInputFormat } from "@/lib/csv/format-detect";
-import { loadMappingConfig } from "@/lib/csv/mapping";
 import { type ParseResult, parseRSeriesCsv } from "@/lib/csv/r-series";
 import { getDb } from "@/lib/db/client";
 import { books, exports, runs } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
-import type { BookSource, EnrichedBook, InputFormat } from "@/types/book";
+import type { BookSource, InputFormat } from "@/types/book";
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { ulid } from "ulid";
-import { ensureRunDir, exportCsvPath, sourceCsvPath } from "./paths";
-import { seedEnrichedBookFromSource } from "./seed";
+import { ensureRunDir, sourceCsvPath } from "./paths";
 
 export interface CreateRunInput {
   fileName: string;
@@ -139,84 +134,6 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunResult>
     totalBooks: sourceRows.length,
     invalidRows,
   };
-}
-
-export interface ProcessResult {
-  runId: string;
-  processedBooks: number;
-  failedBooks: number;
-  exportPath: string;
-}
-
-/**
- * Walk every book in a run, build a `seedEnrichedBook` (no enrichment in M1),
- * write the merged C-Series export, and update counters.
- *
- * Idempotent: rerunning re-writes the export file from whatever is in the DB.
- */
-export async function processRunSync(runId: string): Promise<ProcessResult> {
-  const db = getDb();
-  const mapping = loadMappingConfig();
-
-  const run = db.select().from(runs).where(eq(runs.id, runId)).get();
-  if (!run) throw new Error(`run ${runId} not found`);
-
-  db.update(runs).set({ status: "running" }).where(eq(runs.id, runId)).run();
-
-  const rows = db.select().from(books).where(eq(books.runId, runId)).all();
-  logger.info({ runId, bookCount: rows.length }, "processRunSync start");
-
-  const enriched: EnrichedBook[] = [];
-  let processed = 0;
-  let failed = 0;
-
-  for (const row of rows) {
-    try {
-      const source = row.sourcePayload as BookSource;
-      const book = seedEnrichedBookFromSource(source);
-      enriched.push(book);
-
-      db.update(books)
-        .set({ enrichedPayload: book, status: "done" })
-        .where(eq(books.id, row.id))
-        .run();
-      processed += 1;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      logger.error({ runId, bookId: row.id, message }, "book processing failed");
-      db.update(books)
-        .set({ status: "failed", errors: [{ source: "r-series", message }] })
-        .where(eq(books.id, row.id))
-        .run();
-      failed += 1;
-    }
-  }
-
-  const csv = booksToCsv(enriched, mapping);
-  const outPath = exportCsvPath(runId);
-  await writeFile(outPath, csv, "utf8");
-
-  db.insert(exports)
-    .values({
-      id: ulid(),
-      runId,
-      filePath: outPath,
-      rowCount: enriched.length,
-    })
-    .run();
-
-  db.update(runs)
-    .set({
-      status: failed === rows.length && rows.length > 0 ? "failed" : "completed",
-      processedBooks: processed,
-      failedBooks: failed,
-    })
-    .where(eq(runs.id, runId))
-    .run();
-
-  logger.info({ runId, processed, failed, exportPath: outPath }, "processRunSync done");
-
-  return { runId, processedBooks: processed, failedBooks: failed, exportPath: outPath };
 }
 
 export interface RunSummary {

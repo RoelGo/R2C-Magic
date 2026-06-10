@@ -12,15 +12,18 @@ describe("M1 end-to-end against the rokko sample", () => {
   it.runIf(existsSync(REAL_SAMPLE))(
     "uploading the real sample produces an export with one row per valid book",
     async () => {
-      const { createRun, processRunSync, getLatestExportPath } = await import("../../src/lib/runs");
+      const { createRun, getLatestExportPath, getRun } = await import("../../src/lib/runs");
+      const { processRunInline } = await import("../../src/lib/jobs/run");
 
       const content = readFileSync(REAL_SAMPLE, "utf8");
       const created = await createRun({ fileName: "item_listings_local_matches.csv", content });
       expect(created.totalBooks).toBeGreaterThan(100);
 
-      const result = await processRunSync(created.runId);
-      expect(result.processedBooks).toBe(created.totalBooks);
-      expect(result.failedBooks).toBe(0);
+      const result = await processRunInline(created.runId);
+      expect(result.status).toBe("completed");
+      const run = getRun(created.runId);
+      expect(run?.processedBooks).toBe(created.totalBooks);
+      expect(run?.failedBooks).toBe(0);
 
       const path = getLatestExportPath(created.runId);
       if (!path) throw new Error("export not written");

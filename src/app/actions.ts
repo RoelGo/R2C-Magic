@@ -1,6 +1,7 @@
 "use server";
 
-import { UnknownInputFormatError, createRun, processRunSync } from "@/lib/runs";
+import { enqueueRun } from "@/lib/jobs/run";
+import { UnknownInputFormatError, createRun } from "@/lib/runs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -14,9 +15,9 @@ export interface UploadActionResult {
 /**
  * Server action: accept a multipart upload of a book CSV (R-Series export or
  * CB-intake template — format is detected from the header row), create a run,
- * process it synchronously (M1: no enrichment, just mapping), and redirect to
- * the run detail page. Returns a result object only on validation failure —
- * the happy path throws via `redirect()`.
+ * enqueue every book for async enrichment, and redirect to the run detail
+ * page where the user can watch progress. Returns a result object only on
+ * validation failure — the happy path throws via `redirect()`.
  */
 export async function uploadRunAction(formData: FormData): Promise<UploadActionResult | undefined> {
   const file = formData.get("file");
@@ -66,7 +67,10 @@ export async function uploadRunAction(formData: FormData): Promise<UploadActionR
     };
   }
 
-  await processRunSync(runId);
+  // Fire-and-forget: the user gets redirected to the run page immediately
+  // and watches enrichment progress there. The queue does the rest in the
+  // background on the shared p-queue.
+  enqueueRun(runId);
 
   revalidatePath("/");
   redirect(`/runs/${runId}`);

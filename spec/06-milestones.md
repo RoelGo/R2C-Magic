@@ -116,33 +116,34 @@ in-process job queue, and surface progress in the UI.
 
 Tasks:
 
-- [ ] **Google Books adapter** — real `fetchByEan`, with retry on 429,
-  thumbnail URL upgrade (`http→https` + `&zoom=0`), category passthrough,
-  fixtures for found / not-found / 429
-- [ ] **Open Library adapter** — combine `/api/books?bibkeys=ISBN:<ean>&jscmd=data`
+- [x] **Google Books adapter** — real `fetchByEan`, HTTP 429 surfaced as
+  recordable error (key-less anonymous quota is shared and tiny — users
+  set `GOOGLE_BOOKS_API_KEY` for real volume), thumbnail URL upgrade
+  (`http→https` + strip `edge=curl`), category passthrough, fixtures
+  for found / not-found / 429.
+- [x] **Open Library adapter** — combine `/api/books?bibkeys=ISBN:<ean>&jscmd=data`
   with `/isbn/<ean>.json` and (when the edition links to a work)
   `/works/<id>.json` for the description; set User-Agent from config;
-  fixtures
-- [ ] ~~**KB SRU adapter**~~ — dropped during M2 investigation. The free
+  fixtures.
+- ~~**KB SRU adapter**~~ — dropped during M2 investigation. The free
   `jsru.kb.nl` endpoint returned a default ANP news record for every ISBN
   query; the real book catalog (GGC) requires KB credentials. See
   `spec/04-enrichment.md` for the full note.
-- [ ] `src/lib/jobs/queue.ts` — single `p-queue` instance with concurrency
-  from config
-- [ ] `src/lib/jobs/runner.ts` — process one run end-to-end:
-  - mark `runs.status = 'running'`
-  - for each `books` row: cache lookup per source, call
-    `enrichBook(rSeries, mapping)`, persist `enriched_payload` and per-source
-    `enrichments` rows, update counters
-  - when done, write `export.csv` and mark `runs.status = 'completed'`
-- [ ] Boot-time resumption: on server start, find runs with `status =
-  'running'` and either resume the pending books or mark the run `'failed'`
-  (pick one and document it)
-- [ ] Run page polls `/api/runs/[id]` (TanStack Query) and shows progress
+- [x] `src/lib/jobs/queue.ts` — single `p-queue` instance with concurrency
+  from config.
+- [x] `src/lib/jobs/runner.ts` + `run.ts` — process one run end-to-end
+  via the queue. Cache lookup per source (hits 30d, errors 6h), persist
+  `enriched_payload` + per-source `enrichments` rows, finalize when the
+  last book lands, write the C-Series export, flip `runs.status`.
+- [x] Boot-time resumption via `instrumentation.ts` → `runBootRecovery()`:
+  books stuck in `'enriching'` flipped back to `'pending'`; runs still
+  marked `'running'` re-enqueued. Resume (not fail) chosen because the
+  self-hosted deployment may restart frequently.
+- [ ] Run page polls `/api/runs/[id]` and shows progress (Piece 4).
+- [ ] M2 real-file e2e: upload the rokko sample with mocked fetch →
+  assert downloaded CSV contents (Piece 5).
 - [ ] Add `coverage/` to `.gitignore`, raise coverage target for source
-  adapters
-- [ ] Playwright e2e: upload fixture CSV with mocked fetch → assert
-  downloaded CSV contents
+  adapters.
 
 Definition of done:
 - Uploading a 3,000-row CSV completes in reasonable time on a laptop

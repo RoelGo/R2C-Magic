@@ -1,3 +1,4 @@
+import { config } from "@/lib/config";
 import { googleBooksSource } from "./google-books";
 import { openLibrarySource } from "./open-library";
 import type { EnrichmentSource } from "./source";
@@ -15,5 +16,6 @@ export const allSources: readonly EnrichmentSource[] = [
 ] as const;
 
 export function enabledSources(): readonly EnrichmentSource[] {
+  if (!config.ENRICHMENT_ENABLED) return [];
   return allSources.filter((s) => s.isEnabled());
 }

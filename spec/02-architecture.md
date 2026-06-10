@@ -96,15 +96,21 @@ r2c-magic/
 │   │   │   ├── merge.ts             Per-field priority merge
 │   │   │   └── orchestrator.ts      Enrich one book end-to-end
 │   │   │
-│   │   └── jobs/                    (M2) p-queue + run worker
+│   │   └── jobs/                    In-process p-queue, worker, recovery
+│   │       ├── queue.ts             Shared p-queue (concurrency = ENRICH_CONCURRENCY)
+│   │       ├── cache.ts             enrichment_cache helpers (TTL hits + errors)
+│   │       ├── runner.ts            processBook(): one book, cache-aware
+│   │       ├── run.ts               enqueueRun / awaitRun / finalizeRun
+│   │       └── boot.ts              runBootRecovery() — resume on restart
 │   │
 │   └── types/
 │       └── book.ts            Canonical InputFormat, RSeriesRow, CbIntakeRow, BookSource, EnrichedBook
 │
 └── tests/
     ├── csv/                   Parser, writer, mapping engine
-    ├── enrichment/            Merge + (M2) per-source contract tests
-    │   └── sources/__fixtures__/  Recorded API responses (M2)
+    ├── jobs/                  Cache, worker, boot recovery
+    ├── enrichment/            Merge + per-source contract tests
+    │   └── sources/__fixtures__/  Recorded API responses
     └── e2e/                   Playwright (M2+)
 ```
 

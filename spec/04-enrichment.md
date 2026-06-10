@@ -131,23 +131,61 @@ async function enrichBook(source: BookSource, mapping: MappingConfig): Promise<E
 The orchestrator does **not** persist anything or talk to the queue — those
 are the job runner's concerns (M2).
 
-## Job runner (M2 plan)
+## Job runner (M2)
 
-- `p-queue` with concurrency from `ENRICH_CONCURRENCY` (default 5).
-- Per book:
+Implemented under `src/lib/jobs/` as four modules:
+
+- **`queue.ts`** — a module-level `p-queue` instance sized by
+  `ENRICH_CONCURRENCY` (default 5). One instance shared across runs so
+  total upstream load is capped no matter how many runs the user starts.
+- **`runner.ts`** — `processBook(bookId, mapping)`. For one book:
   1. Mark `books.status = 'enriching'`.
-  2. Check `enrichment_cache` for each source (TTL from
-     `ENRICH_CACHE_TTL_DAYS`). Skip live call if fresh.
-  3. Call `enrichBook(rSeries, mapping)`.
-  4. Persist `EnrichedBook` JSON to `books.enriched_payload`, raw per-source
-     responses to `enrichments`, fresh entries to `enrichment_cache`.
-  5. Mark `books.status = 'done'` (or `'failed'` if every source errored).
-  6. Increment `runs.processed_books`. When equal to `total_books`, set
-     `runs.status = 'completed'` and write the C-Series export to
-     `data/runs/<id>/export.csv`.
-- Restarts: a run with `status = 'running'` on boot is either picked up
-  (resumed where `books.status = 'pending'`) or marked `'failed'` —
-  decision TBD in M2.
+  2. For each `enabledSources()` adapter in parallel:
+     - Consult `enrichment_cache` keyed on `(source, ean)`. Two TTLs:
+       `ENRICH_CACHE_TTL_DAYS` (default 30d) for hits and cached misses,
+       `ENRICH_ERROR_CACHE_TTL_HOURS` (default 6h) for cached errors so
+       transient 5xx/429 retry sooner.
+     - On cache miss, call `fetchByEan` with a per-source
+       `AbortController` budgeted at `ENRICH_TIMEOUT_MS` (10s).
+     - Mirror every outcome (hit, miss, error) into `enrichment_cache`
+       *and* persist a row into `enrichments` for audit.
+  3. Pass per-source partials to `mergeEnrichments`. Persist the merged
+     `EnrichedBook` to `books.enriched_payload`.
+  4. Mark `books.status = 'done'` (or `'failed'` only if every enabled
+     source errored). Errors are recorded on `books.errors`.
+- **`run.ts`** — `enqueueRun(runId)` schedules every pending book onto
+  the queue and returns immediately. When the last book lands, it
+  triggers `finalizeRun(runId)` which writes the C-Series export and
+  flips `runs.status`. A test helper `processRunInline(runId)` wraps
+  enqueue + await for synchronous-feeling tests.
+- **`boot.ts`** — `runBootRecovery()` runs once per process via the
+  Next.js `instrumentation.ts` hook. Books left in `'enriching'` get
+  flipped back to `'pending'` (the previous worker crashed mid-call);
+  runs still marked `'running'` or `'pending'` get re-enqueued. We
+  intentionally **resume** rather than fail because the self-hosted
+  single-binary deployment may restart frequently, and forcing the
+  user to re-upload every interrupted run would be hostile.
+
+### `enrichment_cache` shape
+
+| Column | Notes |
+|---|---|
+| `source` + `ean` | Composite primary key |
+| `payload` | `null` for cached errors; `{}` for cached misses; otherwise the source's `FetchResult.data` |
+| `http_status` | Whatever the upstream returned (`null` for thrown errors) |
+| `error` | `null` for hits; the thrown message for errors |
+| `fetched_at` | Used with one of the two TTLs above |
+
+### Master kill-switch
+
+Set `ENRICHMENT_ENABLED=false` to disable every online source (the
+registry returns `[]`). The test suite uses this so it never reaches
+the live APIs; users can also flip it to validate the mapping step
+without burning quota.
+
+The orchestrator in `src/lib/enrichment/orchestrator.ts` still exists
+as a pure, uncached `enrichBook(source, mapping)` — useful for tests
+and a future "retry this single book without cache" M3 feature.
 
 ## CB Webservices — onboarding notes
 
@@ -193,4 +231,4 @@ Then implement `src/lib/enrichment/sources/cb.ts`:
 | Source returns 429 / 5xx | Adapter throws, error captured in `EnrichedBook.errors`, other sources still merged |
 | All sources fail for a book | Book is exported with R-Series data + ignored blanks + a populated `_enrichment_errors` column |
 | AbortSignal fires (timeout) | Adapter throws an `AbortError`, captured as above |
-| Run process dies mid-run | `books.status = 'enriching'` rows are resumable on next boot (M2) |
+| Run process dies mid-run | Books left in `'enriching'` are flipped back to `'pending'` and re-enqueued at boot via `instrumentation.ts` → `runBootRecovery()`. Runs still marked `'running'` resume from where they left off. |

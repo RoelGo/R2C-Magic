@@ -106,8 +106,10 @@ relevant:
 | `DATABASE_URL` | `./data/r2c.db` | SQLite file path |
 | `DATA_DIR` | `./data` | Directory for uploads, exports, DB |
 | `ENRICH_CONCURRENCY` | `5` | Books enriched in parallel |
-| `ENRICH_CACHE_TTL_DAYS` | `30` | How long cached lookups stay fresh |
+| `ENRICH_CACHE_TTL_DAYS` | `30` | How long cached hits + misses stay fresh |
+| `ENRICH_ERROR_CACHE_TTL_HOURS` | `6` | Shorter TTL for cached upstream errors so transient 5xx/429 retry sooner |
 | `ENRICH_TIMEOUT_MS` | `10000` | Per-source request timeout |
+| `ENRICHMENT_ENABLED` | `true` | Master kill-switch for online sources — set to `false` to disable every adapter (useful for tests + mapping-only runs) |
 | `GOOGLE_BOOKS_API_KEY` | — | Optional, raises the anonymous quota |
 | `OPEN_LIBRARY_USER_AGENT` | `r2c-magic/0.1 …` | Required by Open Library policy |
 | `INCLUDE_ERROR_COLUMN` | `true` | Append the per-row error column to exports |
