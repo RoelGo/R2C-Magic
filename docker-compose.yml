@@ -9,6 +9,11 @@ services:
     env_file:
       - .env
     environment:
+      # PUID/PGID: match the owner of the bind-mounted data dir. On Unraid the
+      # appdata share is nobody:users = 99:100. The entrypoint chowns
+      # /app/data to these ids and drops privileges before starting the app.
+      PUID: 99
+      PGID: 100
       DATABASE_URL: /app/data/r2c.db
       DATA_DIR: /app/data
     volumes:
