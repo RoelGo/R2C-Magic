@@ -108,12 +108,6 @@ owner and a place in the codebase where the answer should land.
 - A normalization step + a manual override table could improve quality.
   Backlog only.
 
-### Image deduplication
-
-- The `coverImageUrls` merge dedups by exact URL string. Different sources
-  often return the same image under different URLs (e.g. Google thumbnail
-  vs full-size). Smarter dedup (by resolved redirect target, or by image
-  hash) is a backlog item.
 
 ## How to close a question
 

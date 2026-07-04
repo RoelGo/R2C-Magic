@@ -23,7 +23,11 @@ function sampleBook(): EnrichedBook {
     descriptionLong: "<p>Een <b>poëtisch</b> boek over identiteit en herinnering.</p>",
     publisher: "EPO",
     authors: ["Fatima Bouchtia", "Helen Saelens"],
-    coverImageUrls: ["https://example.org/cover-a.jpg", "https://example.org/cover-b.jpg"],
+    coverImageUrls: [
+      "https://covers.openlibrary.org/b/id/99999-L.jpg",
+      "https://covers.openlibrary.org/b/id/99999-M.jpg",
+      "https://covers.openlibrary.org/b/id/99999-S.jpg",
+    ],
     fieldSources: {},
     errors: [{ source: "google-books", message: "timeout" }],
   };
@@ -95,17 +99,19 @@ describe("booksToCsv", () => {
     expect(get("NL_Google_Category")).toBe("Media > Books");
   });
 
-  it("computes images joined by the configured separator", () => {
+  it("emits only the single best-resolution cover URL in the Images column", () => {
     const csv = booksToCsv([sampleBook()], config);
     const [headerLine = "", dataLine = ""] = csv.split(/\r?\n/);
     const headers = headerLine.split(";");
     const idx = headers.indexOf("Images");
     expect(idx).toBeGreaterThan(0);
     const value = dataLine.split(";")[idx];
-    // value may be quoted because '|' is not a special CSV char but pipe is fine
-    expect(value).toContain("cover-a.jpg");
-    expect(value).toContain("cover-b.jpg");
-    expect(value).toContain("|");
+    // Only the -L (largest) Open Library URL should appear; no -M or -S.
+    expect(value).toContain("99999-L.jpg");
+    expect(value).not.toContain("99999-M.jpg");
+    expect(value).not.toContain("99999-S.jpg");
+    // No multi-image separator — exactly one URL is emitted.
+    expect(value).not.toContain("|");
   });
 
   it("writes per-row enrichment errors to the error column", () => {

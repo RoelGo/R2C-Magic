@@ -134,7 +134,7 @@ Registered in `src/lib/csv/computed.ts`. Current functions:
 |---|---|
 | `metaTitle` | `"${titleShort} – ${primaryAuthor}"`, falls back to title only |
 | `metaKeywords` | Dedup of `authors + publisher + categories`, comma-joined |
-| `images` | `coverImageUrls.join(imageSeparator)` after HTML-stripping each URL |
+| `images` | The single best-resolution cover from `coverImageUrls` (HTML-stripped). Same-cover multi-resolution duplicates are collapsed to the best size (Open Library `-L > -M > -S`; Google Books by volume id, first/largest wins). Returns `""` when no cover URL is present. |
 
 To add a new computed expression: add the function, extend the `enum` in
 `mapping-schema.ts::columnSchema.expression`, and add a test.

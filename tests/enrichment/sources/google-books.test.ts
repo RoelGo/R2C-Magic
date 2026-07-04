@@ -65,10 +65,10 @@ describe("googleBooksSource.fetchByEan", () => {
     expect(result.data.language).toBe("en");
     expect(result.data.publicationDate).toBe("2016-02-04");
     expect(result.data.categories).toEqual(["Juvenile Fiction / Animals / Foxes"]);
-    expect(result.data.coverImageUrls?.length).toBeGreaterThan(0);
-    // URLs upgraded to https and stripped of the curl artifact.
-    expect(result.data.coverImageUrls?.[0]).toMatch(/^https:/);
-    expect(result.data.coverImageUrls?.[0]).not.toMatch(/edge=curl/);
+    // This fixture only contains thumbnail/smallThumbnail links (zoom=1 and
+    // zoom=5). Per the adapter rule, thumbnails are excluded — so no cover
+    // URL is stored, and we fall back to another source (Open Library / CB).
+    expect(result.data.coverImageUrls).toBeUndefined();
   });
 
   it("returns empty data for a 'no items' response", async () => {
@@ -166,16 +166,55 @@ describe("extractEnrichment", () => {
     expect(extractEnrichment({})).toEqual({});
   });
 
-  it("deduplicates identical normalized cover URLs", () => {
-    // smallThumbnail and thumbnail often differ only in `zoom=` / curl; this
-    // adapter does NOT normalize zoom away, so distinct zooms survive — but
-    // genuinely identical URLs after http→https and curl strip should dedup.
+  it("excludes thumbnail and smallThumbnail URLs; returns undefined when only thumbnails are present", () => {
+    // zoom=1 (thumbnail) and zoom=5 (smallThumbnail) are low-res and must
+    // be dropped so the merge step can fall through to a better source.
     const result = extractEnrichment({
       imageLinks: {
         smallThumbnail: "http://x/cover?img=1&zoom=5&edge=curl",
-        thumbnail: "https://x/cover?img=1&zoom=5",
+        thumbnail: "https://x/cover?img=1&zoom=1",
       },
     });
-    expect(result.coverImageUrls).toEqual(["https://x/cover?img=1&zoom=5"]);
+    expect(result.coverImageUrls).toBeUndefined();
+  });
+
+  it("includes proper-resolution sizes (small/medium/large/extraLarge), largest first", () => {
+    // Official Google Books API imageLinks example (from the API docs).
+    // zoom mapping: small=2, medium=3, large=4, extraLarge=6.
+    const result = extractEnrichment({
+      imageLinks: {
+        smallThumbnail:
+          "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=5&source=gbs_api",
+        thumbnail:
+          "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+        small:
+          "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=2&source=gbs_api",
+        medium:
+          "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=3&source=gbs_api",
+        large:
+          "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=4&source=gbs_api",
+        extraLarge:
+          "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=6&source=gbs_api",
+      },
+    });
+    // Only proper sizes returned, largest (extraLarge) first; thumbnails excluded.
+    expect(result.coverImageUrls).toEqual([
+      "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=6&source=gbs_api",
+      "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=4&source=gbs_api",
+      "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=3&source=gbs_api",
+      "https://books.google.com/books?id=zyTC&printsec=frontcover&img=1&zoom=2&source=gbs_api",
+    ]);
+  });
+
+  it("deduplicates identical normalized cover URLs across proper sizes", () => {
+    // If two proper-size entries resolve to the same URL after normalization,
+    // only the first (largest) should appear.
+    const result = extractEnrichment({
+      imageLinks: {
+        large: "http://x/cover?img=1&zoom=4&edge=curl",
+        medium: "https://x/cover?img=1&zoom=4", // identical after normalization
+      },
+    });
+    expect(result.coverImageUrls).toEqual(["https://x/cover?img=1&zoom=4"]);
   });
 });

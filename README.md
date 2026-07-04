@@ -23,9 +23,7 @@ results, and writes a C-Series-ready import file. Zero manual data entry.
         │                  │
         │  parse CSV       │
         │  enrich by EAN ──┼──▶ Google Books
-        │                  ├──▶ Open Library
-        │                  └──▶ KB SRU (Koninklijke Bibliotheek)
-        │                       (CB Webservices — pending credentials)
+        │                  └──▶ Open Library
         │  merge per field │
         │  apply mapping   │
         └──────────────────┘

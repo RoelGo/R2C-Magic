@@ -65,7 +65,45 @@ source can supply any subset.
 6. **No cross-source coupling**. An adapter knows about its own API and
    nothing else.
 
-## Adding a new source
+### Google Books cover image quality rule
+
+Google's `imageLinks` object maps field names to `zoom` values:
+
+| `imageLinks` key | `zoom` | Quality    |
+|---|---|---|
+| `smallThumbnail` | 5 | thumbnail — **excluded** |
+| `thumbnail`      | 1 | thumbnail — **excluded** |
+| `small`          | 2 | proper ✓ |
+| `medium`         | 3 | proper ✓ |
+| `large`          | 4 | proper ✓ |
+| `extraLarge`     | 6 | proper ✓ |
+
+The Google Books adapter (`src/lib/enrichment/sources/google-books.ts`)
+only includes `small`, `medium`, `large`, and `extraLarge` in
+`coverImageUrls`. If none of those sizes are present (which is the common
+case for ISBN lookups — Google typically returns only
+`thumbnail`/`smallThumbnail`), the adapter returns `[]` for
+`coverImageUrls`, and the merge step naturally falls through to the next
+source (Open Library or CB). The export's `Images` column then reflects the
+Open Library or CB cover instead.
+
+When no proper cover exists from any source, `Images` is left blank.
+
+### Cover image selection at export time
+
+The `images` computed expression (`src/lib/csv/computed.ts`) collapses the
+merged `coverImageUrls` array to a **single best-resolution URL** via
+`pickPrimaryCover`:
+
+- Open Library covers grouped by numeric cover id; `-L > -M > -S`.
+- Google Books covers grouped by `id` query param; input order (largest
+  first) determines the winner.
+- Unknown hosts: each URL is its own group; array order decides.
+
+The first group in array order (which encodes source priority and
+largest-first within source) provides the output URL.
+
+
 
 1. Create `src/lib/enrichment/sources/<your-source>.ts` exporting an
    `EnrichmentSource`.

@@ -139,22 +139,25 @@ export function extractEnrichment(volumeInfo: z.infer<typeof volumeInfoSchema>):
 }
 
 /**
- * Collect Google Books cover URLs, preferring the largest available
- * resolution first, and normalizing each URL so the downstream consumer
- * gets HTTPS without curl edges or zoom restrictions.
+ * Collect Google Books proper-resolution cover URLs, largest first, so the
+ * downstream consumer gets a high-quality image without any thumbnails.
+ *
+ * Google's `imageLinks` fields map to `zoom` values as follows:
+ *   smallThumbnail → zoom=5  (thumbnail, excluded)
+ *   thumbnail      → zoom=1  (thumbnail, excluded)
+ *   small          → zoom=2  (proper)
+ *   medium         → zoom=3  (proper)
+ *   large          → zoom=4  (proper)
+ *   extraLarge     → zoom=6  (proper)
+ *
+ * `thumbnail` and `smallThumbnail` are intentionally excluded. If none of
+ * the proper sizes are present this returns `[]`, letting the merge step
+ * fall through to the next source (e.g. Open Library).
  */
 function collectCoverUrls(imageLinks: z.infer<typeof volumeInfoSchema>["imageLinks"]): string[] {
   if (!imageLinks) return [];
-  // Largest first; the mapping config picks the first one for the primary
-  // cover but keeps the rest as additional images.
-  const ordered = [
-    imageLinks.extraLarge,
-    imageLinks.large,
-    imageLinks.medium,
-    imageLinks.small,
-    imageLinks.thumbnail,
-    imageLinks.smallThumbnail,
-  ];
+  // Proper sizes only, largest first.
+  const ordered = [imageLinks.extraLarge, imageLinks.large, imageLinks.medium, imageLinks.small];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const url of ordered) {
@@ -170,8 +173,7 @@ function collectCoverUrls(imageLinks: z.infer<typeof volumeInfoSchema>["imageLin
 
 /**
  * Strip the page-curl artifact and force HTTPS so covers render cleanly
- * on the rokko webshop. The `zoom` parameter intentionally stays — the
- * smaller thumbnails are useful as backups.
+ * on the rokko webshop.
  */
 export function normalizeCoverUrl(url: string): string {
   let out = url.replace(/^http:\/\//, "https://");
