@@ -21,6 +21,9 @@ RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
+# `public/` is optional in this project; ensure it exists so the runtime
+# COPY below always has a source and the build never breaks.
+RUN mkdir -p public
 
 # --- runtime ------------------------------------------------------------
 FROM node:20-bookworm-slim AS runner
