@@ -26,8 +26,7 @@ export function detectInputFormat(content: string): InputFormat | undefined {
   if (set.has("System ID") && set.has("Item")) return "r-series";
 
   if (set.has("EAN")) {
-    const cbSignals = ["aankoopprijs", "verkoopprijs", "gewenste voorraad", "herbestellingspunt"];
-    if (cbSignals.some((h) => set.has(h))) return "cb-intake";
+    return "cb-intake";
   }
 
   return undefined;
