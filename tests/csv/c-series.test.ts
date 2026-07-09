@@ -1,7 +1,47 @@
 import { describe, expect, it } from "vitest";
 import { booksToCsv } from "../../src/lib/csv/c-series";
-import { loadMappingConfig } from "../../src/lib/csv/mapping";
+import { type MappingConfig, mappingConfigSchema } from "../../src/lib/csv/mapping-schema";
 import type { EnrichedBook } from "../../src/types/book";
+
+/**
+ * These tests exercise the C-series rendering engine, not the production
+ * `mapping.config.json` (which rokko tunes independently — that file is guarded
+ * by tests/csv/mapping-config.test.ts). We drive the engine with a small,
+ * self-contained mock config so the assertions stay stable regardless of how
+ * the negotiated mapping evolves.
+ */
+function mockConfig(overrides: Record<string, unknown> = {}): MappingConfig {
+  return mappingConfigSchema.parse({
+    outputDelimiter: ";",
+    outputLineEnding: "CRLF",
+    includeErrorColumn: true,
+    errorColumnName: "_enrichment_errors",
+    columns: [
+      { name: "Visible", type: "constant", value: "Y" },
+      { name: "Brand", type: "field", from: ["enriched.publisher", "rseries.brand"] },
+      { name: "Supplier", type: "ignore" },
+      {
+        name: "NL_Title_Short",
+        type: "field",
+        from: ["rseries.item", "cb.description"],
+        transform: { truncate: 80 },
+      },
+      { name: "NL_Title_Long", type: "field", from: ["enriched.titleLong", "rseries.item"] },
+      { name: "Price", type: "ignore" },
+      { name: "Tax", type: "ignore" },
+      { name: "Stock_Track", type: "constant", value: "Y" },
+      { name: "Stock_Min", type: "constant", value: "0" },
+      { name: "SKU", type: "ignore" },
+      { name: "EAN", type: "field", from: ["rseries.ean", "cb.ean"] },
+      { name: "NL_Category_1", type: "field", from: "rseries.category" },
+      { name: "NL_Category_2", type: "field", from: "rseries.subcategory.0" },
+      { name: "NL_Google_Category", type: "constant", value: "Media > Books" },
+      { name: "Images", type: "computed", expression: "images" },
+      { name: "Tags", type: "ignore" },
+    ],
+    ...overrides,
+  });
+}
 
 function sampleBook(): EnrichedBook {
   return {
@@ -34,7 +74,7 @@ function sampleBook(): EnrichedBook {
 }
 
 describe("booksToCsv", () => {
-  const config = loadMappingConfig();
+  const config = mockConfig();
 
   it("writes a header row in the configured column order", () => {
     const csv = booksToCsv([sampleBook()], config);
@@ -54,27 +94,7 @@ describe("booksToCsv", () => {
     const lines = csv.split(/\r?\n/);
     const headers = lines[0]?.split(";") ?? [];
 
-    const ignored = [
-      "Supplier",
-      "Price",
-      "Price_Old",
-      "Price_Cost",
-      "Price_Unit",
-      "Unit",
-      "Tax",
-      "Stock_Level",
-      "Stock_Alert",
-      "Article_Code",
-      "SKU",
-      "Volume",
-      "Colli",
-      "Size_X",
-      "Size_Y",
-      "Size_Z",
-      "Buy_Min",
-      "Buy_Max",
-      "Tags",
-    ];
+    const ignored = ["Supplier", "Price", "Tax", "SKU", "Tags"];
     for (const name of ignored) {
       expect(headers, `column ${name} should be absent`).not.toContain(name);
     }
@@ -89,14 +109,22 @@ describe("booksToCsv", () => {
 
     expect(get("Visible")).toBe("Y");
     expect(get("Stock_Track")).toBe("Y");
-    expect(get("Stock_Disable_Sold_Out")).toBe("N");
     expect(get("Stock_Min")).toBe("0");
-    expect(get("NL_Variant")).toBe("Default");
     expect(get("EAN")).toBe("9789462673359");
     expect(get("Brand")).toBe("EPO"); // enriched.publisher wins over rseries.brand
     expect(get("NL_Category_1")).toBe("Boeken");
     expect(get("NL_Category_2")).toBe("Non-fictie");
     expect(get("NL_Google_Category")).toBe("Media > Books");
+  });
+
+  it("falls back down the `from` chain when the first path is empty", () => {
+    const book = sampleBook();
+    book.publisher = undefined; // enriched.publisher empty → rseries.brand wins
+    const csv = booksToCsv([book], config);
+    const [headerLine = "", dataLine = ""] = csv.split(/\r?\n/);
+    const headers = headerLine.split(";");
+    const data = dataLine.split(";");
+    expect(data[headers.indexOf("Brand")]).toBe("Fatima en Helen");
   });
 
   it("emits only the single best-resolution cover URL in the Images column", () => {

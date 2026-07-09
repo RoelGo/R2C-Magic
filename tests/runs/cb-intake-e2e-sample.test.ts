@@ -48,7 +48,13 @@ describe("M1 end-to-end against the rokko CB-intake sample", () => {
       expect(headers).toContain("EAN");
       expect(headers).toContain("NL_Title_Short");
       expect(headers).toContain("_enrichment_errors");
-      expect(headers).toHaveLength(25); // 43 mapped columns − 19 ignored + error column
+      // Exported headers must be exactly the non-ignored mapping columns plus
+      // the error column — derived from the config so it survives mapping edits.
+      const { loadMappingConfig } = await import("../../src/lib/csv/mapping");
+      const cfg = loadMappingConfig();
+      const expectedHeaderCount =
+        cfg.columns.filter((c) => c.type !== "ignore").length + (cfg.includeErrorColumn ? 1 : 0);
+      expect(headers).toHaveLength(expectedHeaderCount);
 
       for (const row of parsed.data) {
         expect(row.EAN).toMatch(/^\d{13}$/);

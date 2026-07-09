@@ -25,12 +25,22 @@ export function detectInputFormat(content: string): InputFormat | undefined {
 
   if (set.has("System ID") && set.has("Item")) return "r-series";
 
-  if (set.has("EAN")) {
+  // CB-intake requires EAN *and* at least one Dutch template-only column, so a
+  // generic EAN-bearing export (e.g. a bare R-Series header) isn't misread.
+  if (set.has("EAN") && CB_SIGNAL_COLUMNS.some((c) => set.has(c))) {
     return "cb-intake";
   }
 
   return undefined;
 }
+
+/** Dutch template-only headers that distinguish a CB-intake upload. */
+const CB_SIGNAL_COLUMNS = [
+  "aankoopprijs",
+  "verkoopprijs",
+  "gewenste voorraad",
+  "herbestellingspunt",
+];
 
 /**
  * Parse just enough of the CSV to grab the header row. Uses Papa.parse with

@@ -27,12 +27,16 @@ export function bookToRow(book: EnrichedBook, config: MappingConfig): Record<str
           value = resolveFieldPath(book, p);
           if (value != null && value !== "") break;
         }
-        row[col.name] = applyTransforms(value, col.transform);
+        const rendered = applyTransforms(value, col.transform);
+        // Fall back to the configured default when enrichment found nothing.
+        row[col.name] = rendered !== "" ? rendered : (col.default ?? "");
         break;
       }
-      case "computed":
-        row[col.name] = computeColumn(col.expression, book, config);
+      case "computed": {
+        const computed = computeColumn(col.expression, book, config);
+        row[col.name] = computed !== "" ? computed : (col.default ?? "");
         break;
+      }
     }
   }
 

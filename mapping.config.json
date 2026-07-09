@@ -44,7 +44,7 @@
       "transform": { "stripHtml": true, "truncate": 200 }
     },
     { "name": "NL_Description_Long", "type": "field", "from": "enriched.descriptionLong" },
-    { "name": "NL_Variant", "type": "ignore", "value": "Default" },
+    { "name": "NL_Variant", "type": "ignore" },
     { "name": "Price", "type": "ignore" },
     { "name": "Price_Old", "type": "ignore" },
     { "name": "Price_Cost", "type": "ignore" },
@@ -88,7 +88,12 @@
       "transform": { "stripHtml": true, "truncate": 160 }
     },
     { "name": "NL_Meta_Keywords", "type": "computed", "expression": "metaKeywords" },
-    { "name": "Images", "type": "computed", "expression": "images" },
+    {
+      "name": "Images",
+      "type": "computed",
+      "expression": "images",
+      "default": "!ID:498887379"
+    },
     { "name": "Tags", "type": "ignore" }
   ]
 }

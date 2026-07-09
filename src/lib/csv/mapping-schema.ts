@@ -29,12 +29,23 @@ const columnSchema = z.discriminatedUnion("type", [
     /** Single path or ordered fallback list. First non-empty wins. */
     from: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]),
     transform: transformSchema.optional(),
+    /**
+     * Value used when every path in `from` resolves to empty/undefined
+     * (i.e. enrichment found nothing). The default is emitted verbatim and
+     * is not passed through `transform`.
+     */
+    default: z.string().optional(),
   }),
   z.object({
     name: z.string().min(1),
     type: z.literal("computed"),
     /** Name of a function in src/lib/csv/computed.ts */
     expression: z.enum(["metaTitle", "metaKeywords", "images"]),
+    /**
+     * Value used when the computed expression yields an empty string, e.g. a
+     * standard cover URL for `images` when enrichment found no cover.
+     */
+    default: z.string().optional(),
   }),
 ]);
 
