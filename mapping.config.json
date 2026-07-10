@@ -1,6 +1,6 @@
 {
   "$schema": "./mapping.schema.json",
-  "outputDelimiter": ";",
+  "outputDelimiter": ",",
   "outputLineEnding": "CRLF",
   "outputBom": false,
   "imageSeparator": "|",
