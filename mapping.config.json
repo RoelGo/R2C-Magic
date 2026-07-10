@@ -92,7 +92,7 @@
       "name": "Images",
       "type": "computed",
       "expression": "images",
-      "default": "!ID:498887379"
+      "default": "https://cdn.webshopapp.com/shops/348486/files/498887379/rokko-cover5.png"
     },
     { "name": "Tags", "type": "ignore" }
   ]
