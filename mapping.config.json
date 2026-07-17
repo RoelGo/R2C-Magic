@@ -29,7 +29,7 @@
     {
       "name": "NL_Title_Short",
       "type": "field",
-      "from": ["rseries.item", "cb.description"],
+      "from": ["enriched.titleLong", "rseries.item", "cb.description"],
       "transform": { "truncate": 80 }
     },
     {
@@ -38,12 +38,24 @@
       "from": ["enriched.titleLong", "rseries.item", "cb.description"]
     },
     {
+      "name": "EN_Title_Long",
+      "type": "field",
+      "from": ["enriched.titleLong", "rseries.item", "cb.description"]
+    },
+    {
       "name": "NL_Description_Short",
       "type": "field",
-      "from": "enriched.descriptionShort",
+      "from": ["enriched.descriptionShort", "enriched.descriptionLong"],
+      "transform": { "stripHtml": true, "truncate": 200 }
+    },
+    {
+      "name": "EN_Description_Short",
+      "type": "field",
+      "from": ["enriched.descriptionShort", "enriched.descriptionLong"],
       "transform": { "stripHtml": true, "truncate": 200 }
     },
     { "name": "NL_Description_Long", "type": "field", "from": "enriched.descriptionLong" },
+    { "name": "EN_Description_Long", "type": "field", "from": "enriched.descriptionLong" },
     { "name": "NL_Variant", "type": "ignore" },
     { "name": "Price", "type": "ignore" },
     { "name": "Price_Old", "type": "ignore" },
@@ -84,7 +96,13 @@
     {
       "name": "NL_Meta_Description",
       "type": "field",
-      "from": "enriched.descriptionShort",
+      "from": ["enriched.descriptionShort", "enriched.descriptionLong"],
+      "transform": { "stripHtml": true, "truncate": 160 }
+    },
+    {
+      "name": "EN_Meta_Description",
+      "type": "field",
+      "from": ["enriched.descriptionShort", "enriched.descriptionLong"],
       "transform": { "stripHtml": true, "truncate": 160 }
     },
     { "name": "NL_Meta_Keywords", "type": "computed", "expression": "metaKeywords" },
