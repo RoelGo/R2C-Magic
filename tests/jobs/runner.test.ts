@@ -6,7 +6,7 @@
  *  1. cache miss → live call → cache hit → second call uses cache
  *  2. one source errors → recorded in EnrichedBook.errors + the book row
  *  3. every source errors → book row marked 'failed'
- *  4. cache holds an error → worker reuses it without re-calling
+ *  4. errors are not cached → the next run re-calls the upstream
  */
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -148,7 +148,7 @@ describe("jobs/runner", () => {
     expect(row?.status).toBe("failed");
   });
 
-  it("uses a cached error without re-calling the upstream", async () => {
+  it("re-calls the upstream on the next run because errors are not cached", async () => {
     const ol: EnrichmentSource = {
       id: "open-library",
       displayName: "ol",
@@ -167,8 +167,8 @@ describe("jobs/runner", () => {
     await processBook(bookId, loadMappingConfig());
     await processBook(bookId, loadMappingConfig());
 
-    // The cached error short-circuits the second call.
-    expect(olSpy).toHaveBeenCalledOnce();
+    // Thrown errors are never cached, so each run re-hits the upstream.
+    expect(olSpy).toHaveBeenCalledTimes(2);
   });
 
   it("writes an enrichments row for every source call (live or cached)", async () => {

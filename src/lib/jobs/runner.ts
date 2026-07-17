@@ -16,7 +16,9 @@ import type { BookSource, EnrichedBook, EnrichmentSourceId } from "@/types/book"
  *     within TTL, otherwise call the live adapter with a per-source
  *     `AbortController` budgeted at `ENRICH_TIMEOUT_MS`.
  *  3. Writes one `enrichments` row per source per call.
- *  4. Mirrors the outcome into `enrichment_cache` (success, miss, or error).
+ *  4. Mirrors successful outcomes into `enrichment_cache` (real hits and
+ *     genuine "not found" misses). Thrown errors are *not* cached so they
+ *     retry on the next run.
  *  5. Merges everything via `mergeEnrichments` and persists the
  *     `EnrichedBook` to `books.enriched_payload`.
  *  6. Marks the book `done` (or `failed` if every source errored).
@@ -26,7 +28,7 @@ import type { BookSource, EnrichedBook, EnrichmentSourceId } from "@/types/book"
  */
 import { eq } from "drizzle-orm";
 import { ulid } from "ulid";
-import { getCached, putCachedError, putCachedHit } from "./cache";
+import { getCached, putCachedHit } from "./cache";
 
 interface SourceCall {
   /** Raw payload (always undefined for cached calls). */
@@ -139,7 +141,9 @@ async function callOrUseCached(source: EnrichmentSource, ean: string): Promise<S
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    putCachedError(source.id, ean, message, null);
+    // Do not cache thrown errors: transient upstream failures (5xx, 429,
+    // network blips) must be retried on the next run rather than serving a
+    // stale error. Only successful (or genuine "not found") results are cached.
     logger.warn({ source: source.id, ean, message }, "enrichment failed");
     return {
       error: message,
