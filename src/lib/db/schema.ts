@@ -169,6 +169,35 @@ export const intakeBooks = sqliteTable("intake_books", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+/**
+ * v2 mobile intake — `intake_images`: cover photos a worker takes for a book
+ * (spec v2 US-D1 front, US-D2 back). One current image per `kind`; a retake
+ * replaces the row (and its file on disk). Bytes live on disk under
+ * `DATA_DIR/intake-images/<bookId>/`; only metadata + the relative path are
+ * stored here so the DB stays small and the files are ready for the eCom
+ * image upload in Slice F.
+ */
+export const intakeImages = sqliteTable(
+  "intake_images",
+  {
+    id: text("id").primaryKey(), // ULID
+    bookId: text("book_id")
+      .notNull()
+      .references(() => intakeBooks.id, { onDelete: "cascade" }),
+    /** Which cover this is — front (primary) or back (blurb/OCR source). */
+    kind: text("kind", { enum: ["front", "back"] }).notNull(),
+    /** Path relative to DATA_DIR, e.g. `intake-images/<bookId>/front.jpg`. */
+    filePath: text("file_path").notNull(),
+    mimeType: text("mime_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .default(sql`(unixepoch() * 1000)`),
+  },
+  // At most one image per (book, kind); a retake upserts onto this key.
+  (t) => ({ pk: primaryKey({ columns: [t.bookId, t.kind] }) }),
+);
+
 export type Run = InferSelectModel<typeof runs>;
 export type NewRun = InferInsertModel<typeof runs>;
 export type BookRow = InferSelectModel<typeof books>;
@@ -179,3 +208,5 @@ export type IntakeSession = InferSelectModel<typeof intakeSessions>;
 export type NewIntakeSession = InferInsertModel<typeof intakeSessions>;
 export type IntakeBookRow = InferSelectModel<typeof intakeBooks>;
 export type NewIntakeBookRow = InferInsertModel<typeof intakeBooks>;
+export type IntakeImageRow = InferSelectModel<typeof intakeImages>;
+export type NewIntakeImageRow = InferInsertModel<typeof intakeImages>;

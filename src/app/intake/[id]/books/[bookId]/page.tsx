@@ -1,6 +1,8 @@
+import { CoverPhotos } from "@/components/cover-photos";
 import { EanCapture } from "@/components/ean-capture";
 import { EnrichmentStatus } from "@/components/enrichment-status";
 import { getIntakeBook } from "@/lib/intake";
+import { listIntakeImages } from "@/lib/intake/images";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -18,6 +20,12 @@ export default async function IntakeBookPage({ params }: Props) {
   const { id, bookId } = await params;
   const book = getIntakeBook(id, bookId);
   if (!book) notFound();
+
+  const images = listIntakeImages(id, bookId);
+  const captured = {
+    front: images.some((i) => i.kind === "front"),
+    back: images.some((i) => i.kind === "back"),
+  };
 
   return (
     <div className="space-y-6">
@@ -46,8 +54,13 @@ export default async function IntakeBookPage({ params }: Props) {
         <EnrichmentStatus sessionId={id} bookId={bookId} hasEan={Boolean(book.ean)} />
       </section>
 
+      <section className="space-y-3">
+        <h3 className="text-lg font-semibold">3. Cover photos</h3>
+        <CoverPhotos sessionId={id} bookId={bookId} captured={captured} />
+      </section>
+
       <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-        Photos, the pre-filled review form, and the push to the webshop arrive in the next slices.
+        The pre-filled review form and the push to the webshop arrive in the next slices.
       </div>
     </div>
   );
