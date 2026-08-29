@@ -62,7 +62,9 @@ describe("GET /api/runs/[id]/export", () => {
     expect(response.headers.get("content-type")).toMatch(/text\/csv/);
     expect(response.headers.get("content-disposition")).toMatch(/attachment;\s*filename="r2c_/);
     const body = await response.text();
-    expect(body).toContain("Visible;Brand"); // header row from mapping
+    const { loadMappingConfig } = await import("../../src/lib/csv/mapping");
+    const d = loadMappingConfig().outputDelimiter;
+    expect(body).toContain(`Visible${d}Brand`); // header row from mapping
     expect(body).toContain("9789462673359"); // EAN appears in the data row
   });
 

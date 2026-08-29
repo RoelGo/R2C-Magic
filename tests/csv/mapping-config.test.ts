@@ -8,9 +8,9 @@ describe("mapping.config.json", () => {
     expect(() => mappingConfigSchema.parse(cfg)).not.toThrow();
   });
 
-  it("declares exactly the 43 C-series columns from the template", () => {
+  it("declares exactly the 47 C-series columns from the template", () => {
     const cfg = loadMappingConfig();
-    expect(cfg.columns).toHaveLength(43);
+    expect(cfg.columns).toHaveLength(47);
   });
 
   it("ignores the agreed set of columns", () => {

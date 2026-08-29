@@ -29,11 +29,15 @@ describe("M1 end-to-end against the rokko sample", () => {
       if (!path) throw new Error("export not written");
       const csv = readFileSync(path, "utf8");
 
-      // Parse back as semicolon CSV — many rokko titles contain semicolons
-      // inside quoted values (e.g. `"Up Your Ass; and ..."`).
+      const { loadMappingConfig } = await import("../../src/lib/csv/mapping");
+      const cfg = loadMappingConfig();
+      const delimiter = cfg.outputDelimiter;
+
+      // Parse back using the configured output delimiter. Quoted values keep
+      // any embedded delimiters intact (e.g. `"Up Your Ass; and ..."`).
       const parsed = Papa.parse<Record<string, string>>(csv, {
         header: true,
-        delimiter: ";",
+        delimiter,
         skipEmptyLines: true,
       });
       expect(parsed.errors).toEqual([]);
@@ -45,8 +49,6 @@ describe("M1 end-to-end against the rokko sample", () => {
       expect(headers).toContain("_enrichment_errors");
       // Exported headers must be exactly the non-ignored mapping columns plus
       // the error column — derived from the config so it survives mapping edits.
-      const { loadMappingConfig } = await import("../../src/lib/csv/mapping");
-      const cfg = loadMappingConfig();
       const expectedHeaderCount =
         cfg.columns.filter((c) => c.type !== "ignore").length + (cfg.includeErrorColumn ? 1 : 0);
       expect(headers).toHaveLength(expectedHeaderCount);

@@ -78,7 +78,10 @@ describe("lib/runs", () => {
     const lines = csv.split(/\r\n/).filter((l) => l.length > 0);
     expect(lines).toHaveLength(3); // header + 2 books
 
-    const headers = lines[0]?.split(";") ?? [];
+    const { loadMappingConfig } = await import("../../src/lib/csv/mapping");
+    const delimiter = loadMappingConfig().outputDelimiter;
+
+    const headers = lines[0]?.split(delimiter) ?? [];
     expect(headers).toContain("EAN");
     expect(headers).toContain("Visible");
     expect(headers).toContain("_enrichment_errors");
@@ -87,9 +90,9 @@ describe("lib/runs", () => {
     const eanIdx = headers.indexOf("EAN");
     const visibleIdx = headers.indexOf("Visible");
     const titleIdx = headers.indexOf("NL_Title_Short");
-    expect(lines[1]?.split(";")[eanIdx]).toBe("9789462673359");
-    expect(lines[1]?.split(";")[visibleIdx]).toBe("Y");
-    expect(lines[1]?.split(";")[titleIdx]).toContain("Het begin van mijn leven");
+    expect(lines[1]?.split(delimiter)[eanIdx]).toBe("9789462673359");
+    expect(lines[1]?.split(delimiter)[visibleIdx]).toBe("Y");
+    expect(lines[1]?.split(delimiter)[titleIdx]).toContain("Het begin van mijn leven");
 
     // Per the M0 mapping config, Price/Tax/Stock_Level/Article_Code are ignored and excluded from the export.
     for (const ignored of ["Price", "Tax", "Stock_Level", "Article_Code"]) {

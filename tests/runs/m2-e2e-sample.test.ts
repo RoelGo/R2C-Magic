@@ -20,6 +20,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import Papa from "papaparse";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { installM2FetchStub } from "../helpers/m2-fetch-stub";
 import { useTmpEnv } from "../helpers/tmp-env";
@@ -98,10 +99,18 @@ describe("M2 end-to-end against the rokko CB-intake sample", () => {
       const exportPath = getLatestExportPath(runId);
       if (!exportPath) throw new Error("export not written");
       const exportCsv = readFileSync(exportPath, "utf8");
-      const lines = exportCsv.split(/\r\n/).filter((l) => l.length > 0);
-      expect(lines).toHaveLength(30); // header + 29 books
 
-      const headers = lines[0]?.split(";") ?? [];
+      const { loadMappingConfig } = await import("../../src/lib/csv/mapping");
+      const delimiter = loadMappingConfig().outputDelimiter;
+      // Parse into positional rows with a real CSV parser so quoted values
+      // containing the delimiter (common in descriptions) stay intact.
+      const rows = Papa.parse<string[]>(exportCsv.trim(), {
+        delimiter,
+        skipEmptyLines: true,
+      }).data;
+      expect(rows).toHaveLength(30); // header + 29 books
+
+      const headers = rows[0] ?? [];
       const headerIdx = (name: string) => {
         const i = headers.indexOf(name);
         if (i < 0) throw new Error(`header ${name} missing from export`);
@@ -116,8 +125,8 @@ describe("M2 end-to-end against the rokko CB-intake sample", () => {
 
       // Index the data rows by EAN so we can assert per-book outcomes.
       const rowsByEan = new Map<string, string[]>();
-      for (let i = 1; i < lines.length; i++) {
-        const cells = lines[i]?.split(";") ?? [];
+      for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i] ?? [];
         const ean = cells[idxEan];
         if (ean) rowsByEan.set(ean, cells);
       }

@@ -36,9 +36,12 @@ describe("M1 end-to-end against the rokko CB-intake sample", () => {
       if (!path) throw new Error("export not written");
       const csv = readFileSync(path, "utf8");
 
+      const { loadMappingConfig } = await import("../../src/lib/csv/mapping");
+      const cfg = loadMappingConfig();
+
       const parsed = Papa.parse<Record<string, string>>(csv, {
         header: true,
-        delimiter: ";",
+        delimiter: cfg.outputDelimiter,
         skipEmptyLines: true,
       });
       expect(parsed.errors).toEqual([]);
@@ -50,8 +53,6 @@ describe("M1 end-to-end against the rokko CB-intake sample", () => {
       expect(headers).toContain("_enrichment_errors");
       // Exported headers must be exactly the non-ignored mapping columns plus
       // the error column — derived from the config so it survives mapping edits.
-      const { loadMappingConfig } = await import("../../src/lib/csv/mapping");
-      const cfg = loadMappingConfig();
       const expectedHeaderCount =
         cfg.columns.filter((c) => c.type !== "ignore").length + (cfg.includeErrorColumn ? 1 : 0);
       expect(headers).toHaveLength(expectedHeaderCount);
