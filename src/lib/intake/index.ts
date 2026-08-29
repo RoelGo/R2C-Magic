@@ -12,6 +12,7 @@ import { intakeBooks, intakeSessions } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { ulid } from "ulid";
+import { normalizeEan13 } from "./ean";
 
 export type IntakeBookStatus = "draft" | "pushed" | "failed";
 
@@ -135,4 +136,34 @@ export function getIntakeBook(sessionId: string, bookId: string): IntakeBookSumm
     .from(intakeBooks)
     .where(and(eq(intakeBooks.sessionId, sessionId), eq(intakeBooks.id, bookId)))
     .get();
+}
+
+/**
+ * Persist a captured/typed EAN onto an intake book (spec v2 US-B1/US-B2).
+ *
+ * The EAN is validated (length + EAN-13 check digit) at this boundary; an
+ * invalid value throws so callers surface it inline rather than storing junk.
+ * Later slices trigger background enrichment (US-C1) off the stored EAN.
+ *
+ * @throws if the book is not found in the session, or the EAN is invalid.
+ */
+export function setBookEan(sessionId: string, bookId: string, rawEan: string): string {
+  const normalized = normalizeEan13(rawEan);
+  if (!normalized) {
+    throw new Error(`Invalid EAN-13: ${rawEan}`);
+  }
+
+  const db = getDb();
+  const result = db
+    .update(intakeBooks)
+    .set({ ean: normalized, updatedAt: new Date() })
+    .where(and(eq(intakeBooks.sessionId, sessionId), eq(intakeBooks.id, bookId)))
+    .run();
+
+  if (result.changes === 0) {
+    throw new Error(`Unknown intake book: ${bookId} in session ${sessionId}`);
+  }
+
+  logger.info({ sessionId, bookId, ean: normalized }, "intake book EAN captured");
+  return normalized;
 }

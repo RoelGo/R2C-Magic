@@ -100,4 +100,35 @@ describe("lib/intake", () => {
     // Correct book id but wrong session must not resolve.
     expect(getIntakeBook(sessionB, bookId)).toBeUndefined();
   });
+
+  it("setBookEan validates, normalizes, and persists the EAN", async () => {
+    const { createSession, addBookToSession, setBookEan, getIntakeBook } = await import(
+      "../../src/lib/intake"
+    );
+
+    const sessionId = createSession();
+    const bookId = addBookToSession(sessionId);
+
+    const stored = setBookEan(sessionId, bookId, "978-0-14-032872-1");
+    expect(stored).toBe("9780140328721"); // separators stripped
+    expect(getIntakeBook(sessionId, bookId)?.ean).toBe("9780140328721");
+  });
+
+  it("setBookEan rejects an invalid check digit without persisting", async () => {
+    const { createSession, addBookToSession, setBookEan, getIntakeBook } = await import(
+      "../../src/lib/intake"
+    );
+
+    const sessionId = createSession();
+    const bookId = addBookToSession(sessionId);
+
+    expect(() => setBookEan(sessionId, bookId, "9780140328722")).toThrow(/Invalid EAN-13/);
+    expect(getIntakeBook(sessionId, bookId)?.ean).toBeNull();
+  });
+
+  it("setBookEan throws for an unknown book", async () => {
+    const { createSession, setBookEan } = await import("../../src/lib/intake");
+    const sessionId = createSession();
+    expect(() => setBookEan(sessionId, "nope", "9780140328721")).toThrow(/Unknown intake book/);
+  });
 });

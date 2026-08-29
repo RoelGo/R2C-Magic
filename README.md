@@ -92,6 +92,21 @@ Useful scripts:
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:studio` | Browse the database in Drizzle Studio |
 
+## Mobile intake — camera & HTTPS requirement
+
+The **New arrivals** flow (`/intake`, spec v2) is a phone-first, one-book-at-a-time
+path that scans the barcode with the device camera. Browsers only grant camera
+access on a **secure context**, so the barcode scanner (US-B1) works only when
+the app is served over **HTTPS** (or via `http://localhost` during development).
+
+- **Deployment:** terminate TLS at the reverse proxy in front of the app; a
+  plain-HTTP origin on a phone will silently fail to open the camera.
+- **Fallback:** if the camera is blocked, unavailable, or the barcode is
+  damaged, the same screen offers **manual EAN/ISBN-13 entry** (US-B2), so the
+  flow never hard-depends on the camera.
+- The scanner prefers the native `BarcodeDetector` API and falls back to
+  `@zxing/browser` where it is unavailable.
+
 ## Configuration
 
 All runtime settings live in environment variables, parsed and validated at

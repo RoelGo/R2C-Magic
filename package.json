@@ -26,6 +26,8 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.20",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "better-sqlite3": "^11.7.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.39.3",

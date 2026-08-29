@@ -1,6 +1,6 @@
 "use server";
 
-import { addBookToSession, createSession } from "@/lib/intake";
+import { addBookToSession, createSession, setBookEan } from "@/lib/intake";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -29,4 +29,27 @@ export async function addIntakeBookAction(formData: FormData): Promise<void> {
   const bookId = addBookToSession(sessionId);
   revalidatePath(`/intake/${sessionId}`);
   redirect(`/intake/${sessionId}/books/${bookId}`);
+}
+
+export type SetBookEanResult = { ok: true; ean: string } | { ok: false; error: string };
+
+/**
+ * Server action: validate and persist a scanned/typed EAN onto a book
+ * (spec v2 US-B1/US-B2). Called from the client capture component, so it
+ * returns a result object (rather than throwing) to drive inline validation
+ * messages. A successful capture revalidates the book + session views.
+ */
+export async function setBookEanAction(
+  sessionId: string,
+  bookId: string,
+  rawEan: string,
+): Promise<SetBookEanResult> {
+  try {
+    const ean = setBookEan(sessionId, bookId, rawEan);
+    revalidatePath(`/intake/${sessionId}/books/${bookId}`);
+    revalidatePath(`/intake/${sessionId}`);
+    return { ok: true, ean };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to save EAN" };
+  }
 }

@@ -1,3 +1,4 @@
+import { EanCapture } from "@/components/ean-capture";
 import { getIntakeBook } from "@/lib/intake";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,9 +10,8 @@ interface Props {
 }
 
 /**
- * Per-book screen. In Slice A this is a placeholder that confirms the book was
- * created and links back to the session. Slices B–F replace the body with the
- * scan → photos → review → push flow.
+ * Per-book screen. Slice B captures the EAN (scan or manual). Photos, review,
+ * and eCom push (Slices D–F) will render below the capture step once built.
  */
 export default async function IntakeBookPage({ params }: Props) {
   const { id, bookId } = await params;
@@ -35,9 +35,13 @@ export default async function IntakeBookPage({ params }: Props) {
         </p>
       </header>
 
-      <div className="rounded-lg border border-dashed border-slate-300 p-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-        The scan → photograph → review → push flow lands in the next slices. This book is saved as a
-        draft in the session, so nothing is lost.
+      <section className="space-y-3">
+        <h3 className="text-lg font-semibold">1. Barcode</h3>
+        <EanCapture sessionId={id} bookId={bookId} initialEan={book.ean} />
+      </section>
+
+      <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        Photos, the pre-filled review form, and the push to the webshop arrive in the next slices.
       </div>
     </div>
   );
