@@ -1,8 +1,7 @@
 "use client";
 
-import { CameraCapture } from "@/components/camera-capture";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 interface CoverPhotosProps {
   sessionId: string;
@@ -13,34 +12,32 @@ interface CoverPhotosProps {
 
 type Kind = "front" | "back";
 
-const KIND_LABEL: Record<Kind, string> = {
-  front: "front cover",
-  back: "back cover",
-};
-
 /**
  * Front + back cover photo capture for an intake book (spec v2 US-D1/US-D2).
  *
- * Each slot shows the currently stored photo (served from the API) or a
- * "take photo" prompt. Capturing opens the live camera, then uploads the
- * JPEG to the images route; on success we refresh so the stored preview and
- * the review form (later slice) see the new photo. OCR is a separate slice.
+ * Uses the native OS camera via a hidden `<input capture="environment">`:
+ * tapping a slot opens the phone's camera app (with its own focus/flash/retake
+ * UX), and the returned file is uploaded to the images route. The backend,
+ * table, and validation are unchanged. OCR is a separate slice.
  */
 export function CoverPhotos({ sessionId, bookId, captured }: CoverPhotosProps) {
   const router = useRouter();
-  const [activeKind, setActiveKind] = useState<Kind | null>(null);
   const [uploading, setUploading] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Cache-buster so a retake's <img> re-fetches instead of showing the old one.
   const [version, setVersion] = useState(0);
 
-  async function handleCapture(kind: Kind, blob: Blob) {
-    setActiveKind(null);
+  const inputRefs: Record<Kind, React.RefObject<HTMLInputElement | null>> = {
+    front: useRef<HTMLInputElement>(null),
+    back: useRef<HTMLInputElement>(null),
+  };
+
+  async function upload(kind: Kind, file: File) {
     setUploading(kind);
     setError(null);
     try {
       const body = new FormData();
-      body.append("file", blob, `${kind}.jpg`);
+      body.append("file", file, `${kind}.jpg`);
       const res = await fetch(`/api/intake/${sessionId}/books/${bookId}/images/${kind}`, {
         method: "POST",
         body,
@@ -58,6 +55,13 @@ export function CoverPhotos({ sessionId, bookId, captured }: CoverPhotosProps) {
     }
   }
 
+  function handleFile(kind: Kind, event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    // Reset so picking the same file again (or a retake) still fires onChange.
+    event.target.value = "";
+    if (file) upload(kind, file);
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
@@ -71,24 +75,31 @@ export function CoverPhotos({ sessionId, bookId, captured }: CoverPhotosProps) {
             src={`/api/intake/${sessionId}/books/${bookId}/images/${kind}`}
             onTake={() => {
               setError(null);
-              setActiveKind(kind);
+              inputRefs[kind].current?.click();
             }}
           />
         ))}
       </div>
 
+      {/* Hidden native-camera inputs, one per slot. `capture="environment"`
+          asks phones for the rear camera; desktops fall back to a file
+          picker. */}
+      {(["front", "back"] as const).map((kind) => (
+        <input
+          key={kind}
+          ref={inputRefs[kind]}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => handleFile(kind, e)}
+        />
+      ))}
+
       {error ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </p>
-      ) : null}
-
-      {activeKind ? (
-        <CameraCapture
-          label={KIND_LABEL[activeKind]}
-          onCapture={(blob) => handleCapture(activeKind, blob)}
-          onCancel={() => setActiveKind(null)}
-        />
       ) : null}
     </div>
   );
