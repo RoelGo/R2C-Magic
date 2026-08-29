@@ -1,4 +1,5 @@
 import { EanCapture } from "@/components/ean-capture";
+import { EnrichmentStatus } from "@/components/enrichment-status";
 import { getIntakeBook } from "@/lib/intake";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -38,6 +39,11 @@ export default async function IntakeBookPage({ params }: Props) {
       <section className="space-y-3">
         <h3 className="text-lg font-semibold">1. Barcode</h3>
         <EanCapture sessionId={id} bookId={bookId} initialEan={book.ean} />
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-lg font-semibold">2. Online lookup</h3>
+        <EnrichmentStatus sessionId={id} bookId={bookId} hasEan={Boolean(book.ean)} />
       </section>
 
       <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

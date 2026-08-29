@@ -29,6 +29,13 @@
       "when": 1781094100000,
       "tag": "0003_intake_sessions_and_books",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1781094200000,
+      "tag": "0004_intake_enrichment_state",
+      "breakpoints": true
     }
   ]
 }

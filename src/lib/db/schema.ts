@@ -143,6 +143,24 @@ export const intakeBooks = sqliteTable("intake_books", {
   status: text("status", { enum: ["draft", "pushed", "failed"] })
     .notNull()
     .default("draft"),
+  /**
+   * Background online enrichment lifecycle (spec v2 US-C1/US-C2), independent
+   * of the push `status` above. Kicked off the moment an EAN is captured.
+   *  - `idle`      — no EAN yet / not started
+   *  - `searching` — orchestrator running across online sources
+   *  - `done`      — finished with at least one usable enriched field
+   *  - `empty`     — finished but no online match (degrades to OCR/manual)
+   *  - `failed`    — every enabled source errored
+   */
+  enrichmentStatus: text("enrichment_status", {
+    enum: ["idle", "searching", "done", "empty", "failed"],
+  })
+    .notNull()
+    .default("idle"),
+  /** Merged `EnrichedBook` JSON once enrichment finishes (null until then). */
+  enrichedPayload: text("enriched_payload", { mode: "json" }),
+  /** Per-source enrichment errors as a JSON array of { source, message }. */
+  enrichmentErrors: text("enrichment_errors", { mode: "json" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

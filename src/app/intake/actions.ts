@@ -1,6 +1,7 @@
 "use server";
 
 import { addBookToSession, createSession, setBookEan } from "@/lib/intake";
+import { startEnrichment } from "@/lib/intake/enrichment";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -46,6 +47,9 @@ export async function setBookEanAction(
 ): Promise<SetBookEanResult> {
   try {
     const ean = setBookEan(sessionId, bookId, rawEan);
+    // Kick off background online enrichment immediately (US-C1). Non-blocking:
+    // the worker moves on to photos while sources are queried.
+    startEnrichment(sessionId, bookId, ean);
     revalidatePath(`/intake/${sessionId}/books/${bookId}`);
     revalidatePath(`/intake/${sessionId}`);
     return { ok: true, ean };
