@@ -103,9 +103,61 @@ export const exports = sqliteTable("exports", {
     .default(sql`(unixepoch() * 1000)`),
 });
 
+/**
+ * v2 mobile intake — `intake_sessions`: one row per "New arrivals" session a
+ * worker starts at the receiving table. Persisted so progress survives a page
+ * reload / phone lock (spec v2 US-A1). A session is a lightweight container;
+ * the per-book work lives in `intake_books`.
+ */
+export const intakeSessions = sqliteTable("intake_sessions", {
+  id: text("id").primaryKey(), // ULID
+  /** Optional worker-supplied label (e.g. supplier / delivery note). */
+  label: text("label"),
+  status: text("status", { enum: ["active", "closed"] })
+    .notNull()
+    .default("active"),
+  startedAt: integer("started_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
+/**
+ * v2 mobile intake — `intake_books`: one row per book a worker is adding in a
+ * session. Slice A only needs identity + status + title for the session list
+ * (US-A2); later slices (B–F) attach EAN, enrichment, OCR, image, and eCom
+ * push state to this row.
+ *
+ * `status` lifecycle:
+ *  - `draft`   — in progress / not yet pushed (default)
+ *  - `pushed`  — successfully sent to Lightspeed eCom
+ *  - `failed`  — a push was attempted and failed (recoverable)
+ */
+export const intakeBooks = sqliteTable("intake_books", {
+  id: text("id").primaryKey(), // ULID
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => intakeSessions.id, { onDelete: "cascade" }),
+  ean: text("ean"),
+  /** Best-known title for the session list; may be null until enriched/OCR'd. */
+  title: text("title"),
+  status: text("status", { enum: ["draft", "pushed", "failed"] })
+    .notNull()
+    .default("draft"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 export type Run = InferSelectModel<typeof runs>;
 export type NewRun = InferInsertModel<typeof runs>;
 export type BookRow = InferSelectModel<typeof books>;
 export type NewBookRow = InferInsertModel<typeof books>;
 export type EnrichmentRow = InferSelectModel<typeof enrichments>;
 export type ExportRow = InferSelectModel<typeof exports>;
+export type IntakeSession = InferSelectModel<typeof intakeSessions>;
+export type NewIntakeSession = InferInsertModel<typeof intakeSessions>;
+export type IntakeBookRow = InferSelectModel<typeof intakeBooks>;
+export type NewIntakeBookRow = InferInsertModel<typeof intakeBooks>;
