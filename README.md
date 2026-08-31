@@ -133,7 +133,8 @@ relevant:
 | `OCRS_BIN` | `ocrs` | Path to the `ocrs` CLI binary |
 | `PP_OCR_PYTHON` | `python3` | Python interpreter for the PP-OCRv6 script |
 | `PP_OCR_SCRIPT` | `scripts/pp_ocr.py` | PP-OCRv6 runner script |
-| `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory |
+| `PP_OCR_MODEL_SIZE` | `tiny` | PP-OCRv6 variant: `tiny`, `small`, or `medium` |
+| `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory (overrides size) |
 
 ## Cover OCR engines (US-D3/D4)
 
@@ -181,13 +182,24 @@ stub, keeping the unit suite hermetic.
 ### Accuracy vs. speed (benchmark)
 
 On the sample cover, **PP-OCRv6 is far more accurate** than `ocrs` (clean,
-correctly-spelled lines vs. heavily garbled text), but each invocation reloads
-its models and takes **~60s**, whereas `ocrs` runs in **~0.5s**. The default is
-therefore `ocrs`; switch to `pp-ocrv6` when accuracy matters more than latency.
-The committed snapshots (`tests/integration/ocr-result-*.json`) capture each
-engine's exact output for comparison. Eliminating PP-OCRv6's per-photo cold
-start (e.g. a warm, long-lived worker process) is tracked as a separate story
-— see the roadmap.
+correctly-spelled lines vs. heavily garbled text). PP-OCRv6 ships in three
+sizes (`PP_OCR_MODEL_SIZE`); each reloads its models per invocation, so size
+drives the cold-start cost:
+
+| Engine / model | Time per photo | Accuracy on sample cover |
+|---|---|---|
+| `ocrs` | ~0.5s | Poor — heavily garbled |
+| `pp-ocrv6` `tiny` (default) | ~6s | Excellent — a few micro-typos |
+| `pp-ocrv6` `small` | ~12s | Excellent |
+| `pp-ocrv6` `medium` | ~49s | Best |
+
+`tiny` is the PP-OCRv6 default: nearly as accurate as `medium` once cleaned up
+and human-reviewed, but ~8x faster and comfortably inside `OCR_TIMEOUT_MS`. Use
+`medium` only when maximum accuracy justifies the latency. The committed
+snapshots (`tests/integration/ocr-result-*.json`) capture each engine's exact
+output for comparison. Eliminating PP-OCRv6's per-photo cold start entirely
+(e.g. a warm, long-lived worker process) is tracked as a separate story — see
+the roadmap.
 
 
 ## Mapping configuration

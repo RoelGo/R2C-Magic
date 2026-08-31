@@ -10,7 +10,13 @@ Lines are ordered top-to-bottom, best effort, so downstream extraction can
 treat the first lines of a front cover as the title.
 
 Usage:
-    python3 scripts/pp_ocr.py <image> [--model-dir DIR]
+    python3 scripts/pp_ocr.py <image> [--model-size medium|small|tiny] [--model-dir DIR]
+
+`--model-size` picks a PP-OCRv6 det+rec variant. Smaller = faster cold start
+and inference, at some accuracy cost:
+    medium (default) — most accurate, slowest
+    small            — lighter
+    tiny             — smallest / fastest
 
 Setup (once per environment; see README). Use a virtualenv so it works
 regardless of a Homebrew/system Python that blocks global installs:
@@ -38,9 +44,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run PP-OCRv6 on an image.")
     parser.add_argument("image", help="Path to the image to OCR.")
     parser.add_argument(
+        "--model-size",
+        default="medium",
+        choices=["medium", "small", "tiny"],
+        help="PP-OCRv6 det+rec variant (default: medium).",
+    )
+    parser.add_argument(
         "--model-dir",
         default=None,
-        help="Optional local PP-OCRv6 model directory.",
+        help="Optional local PP-OCRv6 model directory (overrides --model-size).",
     )
     args = parser.parse_args()
 
@@ -68,6 +80,10 @@ def main() -> int:
         # Point both detection and recognition at the supplied local models.
         kwargs["text_detection_model_dir"] = args.model_dir
         kwargs["text_recognition_model_dir"] = args.model_dir
+    else:
+        # Select the PP-OCRv6 det+rec variant by size.
+        kwargs["text_detection_model_name"] = f"PP-OCRv6_{args.model_size}_det"
+        kwargs["text_recognition_model_name"] = f"PP-OCRv6_{args.model_size}_rec"
 
     try:
         ocr = PaddleOCR(**kwargs)

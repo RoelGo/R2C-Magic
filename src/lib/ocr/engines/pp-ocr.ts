@@ -25,6 +25,8 @@ export const ppOcrEngine: OcrEngine = {
     const args = [config.PP_OCR_SCRIPT, imagePath];
     if (config.PP_OCR_MODEL_DIR) {
       args.push("--model-dir", config.PP_OCR_MODEL_DIR);
+    } else {
+      args.push("--model-size", config.PP_OCR_MODEL_SIZE);
     }
 
     const { stdout } = await runSubprocess(config.PP_OCR_PYTHON, {
