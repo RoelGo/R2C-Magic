@@ -244,6 +244,67 @@ type the description.*
 - Basic cleanup (collapse whitespace, drop obvious OCR noise) applied before
   presenting; the worker can still edit freely.
 
+#### US-D5 — Improve title/author extraction from the front cover (M)
+*As a worker, I want the OCR title to be the actual book title — not the
+author's name — so the pre-filled title is usually right.*
+
+**Why:** The initial implementation (`src/lib/ocr/extract.ts`,
+`extractFrontCover`) simply takes the **first substantial cleaned line** as the
+title and only treats a line as the author when it starts with `by`/`door`/
+`van`. On real covers this misfires: when the author's name is printed **above**
+the title, or the title is not the topmost text, the author is captured as the
+title and the true title is lost. Reading order (top-to-bottom) is a poor proxy
+for "which line is the title".
+
+- Distinguish **title** vs **author** more reliably than "first line wins",
+  e.g. by combining signals available from the engine: text **size / bounding
+  box height** (titles are typically the largest text), position, and
+  line grouping — rather than reading order alone.
+- Handle the common layout where the **author appears before the title** without
+  misassigning it.
+- Recognise author credits beyond the `by/door/van` prefixes (bare
+  "Firstname Lastname" credit lines, multiple authors, "&"/"and"/"met").
+- Cross-check against online enrichment (Slice C) when available: if the
+  catalog title/author is known, prefer it or use it to disambiguate which OCR
+  line is the title. OCR remains the fallback when there is no online match
+  (US-G2).
+- **Note:** this likely needs richer engine output than plain text lines. The
+  `ocrs` (`--json`) and PP-OCRv6 pipelines both expose per-line **geometry**
+  (bounding boxes); the `OcrEngine` contract (`src/lib/ocr/engine.ts`) currently
+  returns only `lines`/`text` and would need to carry optional box/size data for
+  the size-based heuristic. Keep the plain-text path working as a fallback.
+
+#### US-D6 — Trim non-description text from the back cover (M)
+*As a worker, I want the OCR description to contain just the blurb — not review
+quotes, the author bio, price, ISBN, or publisher boilerplate — so I don't have
+to delete lines every time.*
+
+**Why:** `extractBackCover` currently **joins every cleaned back-cover line**
+into one paragraph. Back covers routinely also carry press-quote endorsements,
+an author biography, series/publisher blurb, a barcode/ISBN block, price, and a
+website — all of which end up appended to the description today.
+
+- Identify and drop non-blurb regions: **review/press quotes** (often quoted or
+  attributed to a source), **author bio** ("X is the author of…", "X lives
+  in…"), **publisher/series boilerplate**, and metadata lines (**ISBN**,
+  **price**, **URLs**, imprint names like "OXFORD UNIVERSITY PRESS").
+- Prefer the **main blurb paragraph(s)** — typically the largest contiguous
+  block of prose — over scattered fragments.
+- Apply light punctuation/spacing cleanup so the result reads as prose, while
+  the worker can still edit freely in the review form.
+- Where the back-cover OCR is too noisy to segment confidently, fall back to
+  the current "join everything" behaviour rather than returning nothing, and
+  let the worker trim it — never block (US-D4 contract).
+
+> **Status / context.** Observed during manual testing of Slice D on a real
+> book: the front-cover author line was returned as the title, and the back-cover
+> description included review quotes and bio lines that shouldn't be there. The
+> engines themselves read the text well (PP-OCRv6 in particular); the gap is in
+> the **extraction heuristics** (`src/lib/ocr/extract.ts`), not the OCR. These
+> two stories are deliberately scoped to that module (plus a possible
+> `OcrEngine` geometry extension) and can be picked up after the review form
+> (Slice E) lands, since the form already lets the worker correct any residue.
+
 ---
 
 ### Slice E — Assisted review form
