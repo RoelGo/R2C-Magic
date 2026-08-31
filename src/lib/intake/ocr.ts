@@ -47,6 +47,10 @@ export function startOcr(
   const db = getDb();
 
   if (!engine) {
+    logger.warn(
+      { sessionId, bookId },
+      "startOcr: no active OCR engine (OCR disabled or not configured) — marking empty",
+    );
     db.update(intakeBooks)
       .set({ ocrStatus: "empty", updatedAt: new Date() })
       .where(and(eq(intakeBooks.sessionId, sessionId), eq(intakeBooks.id, bookId)))
@@ -54,12 +58,23 @@ export function startOcr(
     return;
   }
 
+  logger.debug({ sessionId, bookId, engine: engine.id }, "startOcr: marking running + enqueueing");
+
   db.update(intakeBooks)
     .set({ ocrStatus: "running", updatedAt: new Date() })
     .where(and(eq(intakeBooks.sessionId, sessionId), eq(intakeBooks.id, bookId)))
     .run();
 
-  void getQueue().add(() => runOcr(sessionId, bookId, engine));
+  // Fire-and-forget on the shared queue. runOcr never throws, but guard the
+  // queue task itself so a scheduling error can't vanish silently.
+  void getQueue()
+    .add(() => runOcr(sessionId, bookId, engine))
+    .catch((err) => {
+      logger.error(
+        { sessionId, bookId, err: errorMessage(err) },
+        "startOcr: queued OCR task rejected unexpectedly",
+      );
+    });
 }
 
 /**
@@ -76,6 +91,7 @@ export async function runOcr(
   const errors: OcrError[] = [];
 
   if (!engine) {
+    logger.warn({ sessionId, bookId }, "runOcr: no active engine — marking empty");
     db.update(intakeBooks)
       .set({ ocrStatus: "empty", updatedAt: new Date() })
       .where(and(eq(intakeBooks.sessionId, sessionId), eq(intakeBooks.id, bookId)))
@@ -86,6 +102,24 @@ export async function runOcr(
   const frontPath = getIntakeImagePath(sessionId, bookId, "front");
   const backPath = getIntakeImagePath(sessionId, bookId, "back");
 
+  logger.debug(
+    {
+      sessionId,
+      bookId,
+      engine: engine.id,
+      frontPath: frontPath ?? null,
+      backPath: backPath ?? null,
+    },
+    "runOcr: starting — resolved cover image paths",
+  );
+
+  if (!frontPath && !backPath) {
+    logger.warn(
+      { sessionId, bookId },
+      "runOcr: no cover images found on disk for this book — marking empty",
+    );
+  }
+
   let title: string | null = null;
   let author: string | null = null;
   let description: string | null = null;
@@ -94,11 +128,20 @@ export async function runOcr(
   if (frontPath) {
     attempted += 1;
     try {
+      logger.debug({ sessionId, bookId, frontPath }, "runOcr: recognising front cover");
       const { lines } = await engine.recognize(frontPath);
       const front = extractFrontCover(lines);
       title = front.title ?? null;
       author = front.author ?? null;
+      logger.debug(
+        { sessionId, bookId, lineCount: lines.length, title, author },
+        "runOcr: front cover recognised",
+      );
     } catch (err) {
+      logger.error(
+        { sessionId, bookId, frontPath, err: errorMessage(err) },
+        "runOcr: front cover recognition failed",
+      );
       errors.push({ kind: "front", message: errorMessage(err) });
     }
   }
@@ -106,9 +149,18 @@ export async function runOcr(
   if (backPath) {
     attempted += 1;
     try {
+      logger.debug({ sessionId, bookId, backPath }, "runOcr: recognising back cover");
       const { lines } = await engine.recognize(backPath);
       description = extractBackCover(lines) ?? null;
+      logger.debug(
+        { sessionId, bookId, lineCount: lines.length, descriptionLength: description?.length ?? 0 },
+        "runOcr: back cover recognised",
+      );
     } catch (err) {
+      logger.error(
+        { sessionId, bookId, backPath, err: errorMessage(err) },
+        "runOcr: back cover recognition failed",
+      );
       errors.push({ kind: "back", message: errorMessage(err) });
     }
   }
@@ -131,7 +183,17 @@ export async function runOcr(
     .run();
 
   logger.info(
-    { sessionId, bookId, engine: engine.id, status, errorCount: errors.length },
+    {
+      sessionId,
+      bookId,
+      engine: engine.id,
+      status,
+      attempted,
+      errorCount: errors.length,
+      hasTitle: Boolean(title),
+      hasAuthor: Boolean(author),
+      hasDescription: Boolean(description),
+    },
     "intake OCR finished",
   );
   return errors;

@@ -11,6 +11,7 @@
  * JSON contract, so the script's internals can evolve independently.
  */
 import { config } from "@/lib/config";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 import type { OcrEngine, OcrResult } from "../engine";
 import { runSubprocess } from "../subprocess";
@@ -29,24 +30,41 @@ export const ppOcrEngine: OcrEngine = {
       args.push("--model-size", config.PP_OCR_MODEL_SIZE);
     }
 
-    const { stdout } = await runSubprocess(config.PP_OCR_PYTHON, {
+    logger.debug(
+      { python: config.PP_OCR_PYTHON, args, cwd: process.cwd(), timeoutMs: config.OCR_TIMEOUT_MS },
+      "pp-ocrv6: invoking script",
+    );
+
+    const { stdout, stderr } = await runSubprocess(config.PP_OCR_PYTHON, {
       args,
       timeoutMs: config.OCR_TIMEOUT_MS,
     });
+
+    if (stderr.trim().length > 0) {
+      // PaddleOCR is chatty on stderr (progress, warnings); log at debug so it
+      // is available when diagnosing but doesn't spam normal runs.
+      logger.debug({ stderr: stderr.trim().slice(0, 2000) }, "pp-ocrv6: script stderr");
+    }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(stdout);
     } catch {
+      logger.error(
+        { stdoutPreview: stdout.slice(0, 500), stdoutLength: stdout.length },
+        "pp-ocrv6: script did not return valid JSON",
+      );
       throw new Error("PP-OCRv6 script did not return valid JSON");
     }
 
     const result = scriptOutputSchema.safeParse(parsed);
     if (!result.success) {
+      logger.error({ parsed }, "pp-ocrv6: script JSON did not match expected shape");
       throw new Error("PP-OCRv6 script JSON did not match the expected shape");
     }
 
     const lines = result.data.lines.map((l) => l.trim()).filter((l) => l.length > 0);
+    logger.debug({ lineCount: lines.length }, "pp-ocrv6: parsed recognised lines");
     return { lines, text: lines.join("\n") };
   },
 };

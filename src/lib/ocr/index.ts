@@ -4,6 +4,7 @@
  * `OCR_ENGINE=none`) so the orchestrator can degrade to "no OCR" (US-G2).
  */
 import { config } from "@/lib/config";
+import { logger } from "@/lib/logger";
 import type { OcrEngine, OcrEngineId } from "./engine";
 import { ocrsEngine } from "./engines/ocrs";
 import { ppOcrEngine } from "./engines/pp-ocr";
@@ -15,7 +16,14 @@ const ENGINES: Record<OcrEngineId, OcrEngine> = {
 
 /** The engine selected by config, or `undefined` when OCR is off. */
 export function activeOcrEngine(): OcrEngine | undefined {
-  if (!config.OCR_ENABLED || config.OCR_ENGINE === "none") return undefined;
+  if (!config.OCR_ENABLED || config.OCR_ENGINE === "none") {
+    logger.debug(
+      { ocrEnabled: config.OCR_ENABLED, ocrEngine: config.OCR_ENGINE },
+      "activeOcrEngine: OCR disabled",
+    );
+    return undefined;
+  }
+  logger.debug({ ocrEngine: config.OCR_ENGINE }, "activeOcrEngine: resolved engine");
   return ENGINES[config.OCR_ENGINE];
 }
 
