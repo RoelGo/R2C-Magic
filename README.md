@@ -128,7 +128,7 @@ relevant:
 | `INCLUDE_ERROR_COLUMN` | `true` | Append the per-row error column to exports |
 | `ERROR_COLUMN_NAME` | `_enrichment_errors` | Name of that column |
 | `OCR_ENABLED` | `false` | Master switch for server-side cover OCR |
-| `OCR_ENGINE` | `ocrs` | Which OCR engine: `ocrs`, `pp-ocrv6`, or `none` |
+| `OCR_ENGINE` | `pp-ocrv6` | Which OCR engine: `ocrs`, `pp-ocrv6`, or `none` |
 | `OCR_TIMEOUT_MS` | `30000` | Per-image OCR subprocess timeout |
 | `OCRS_BIN` | `ocrs` | Path to the `ocrs` CLI binary |
 | `PP_OCR_PYTHON` | `python3` | Python interpreter for the PP-OCRv6 script |
@@ -140,9 +140,10 @@ relevant:
 
 Cover photos are OCR'd **server-side** to pre-fill the title (front cover) and
 description (back cover). OCR is **off by default** (`OCR_ENABLED=false`); the
-photo flow still works and simply skips the suggestion. Two subprocess engines
-sit behind one interface (`src/lib/ocr/`) so they can be benchmarked by
-switching `OCR_ENGINE`:
+photo flow still works and simply skips the suggestion. When enabled, the
+default engine is **`pp-ocrv6`** (accurate and, with the `tiny` model, fast).
+Two subprocess engines sit behind one interface (`src/lib/ocr/`) so they can be
+benchmarked by switching `OCR_ENGINE`:
 
 - **`ocrs`** — [robertknight/ocrs](https://github.com/robertknight/ocrs), a
   Rust OCR CLI (Latin script). Install with Cargo; it downloads its models to

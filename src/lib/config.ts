@@ -52,7 +52,7 @@ const schema = z.object({
     .default("false")
     .transform((v) => v.toLowerCase() === "true"),
   /** Which subprocess engine to run. `none` disables OCR regardless. */
-  OCR_ENGINE: z.enum(["none", "ocrs", "pp-ocrv6"]).default("ocrs"),
+  OCR_ENGINE: z.enum(["none", "ocrs", "pp-ocrv6"]).default("pp-ocrv6"),
   OCR_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   /** Path to the `ocrs` CLI binary (https://github.com/robertknight/ocrs). */
