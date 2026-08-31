@@ -1,4 +1,5 @@
 import { type IntakeImageKind, readIntakeImage, saveIntakeImage } from "@/lib/intake/images";
+import { startOcr } from "@/lib/intake/ocr";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
@@ -38,6 +39,9 @@ export async function POST(request: Request, { params }: Context) {
       mimeType: file.type,
       bytes,
     });
+    // Kick off cover OCR now that a new/updated photo exists (US-D3/D4).
+    // Non-blocking: runs on the shared queue and is polled separately.
+    startOcr(id, bookId);
     return NextResponse.json(meta, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to save image";

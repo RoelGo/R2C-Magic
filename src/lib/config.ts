@@ -40,6 +40,29 @@ const schema = z.object({
     .default("true")
     .transform((v) => v.toLowerCase() !== "false"),
   ERROR_COLUMN_NAME: z.string().default("_enrichment_errors"),
+
+  /**
+   * Server-side OCR of cover photos (spec v2 US-D3/D4). Off by default so the
+   * app runs with no OCR engine installed; the photo flow simply skips the
+   * suggestion step (US-G2). Enable + pick an engine to benchmark the two
+   * subprocess adapters.
+   */
+  OCR_ENABLED: z
+    .string()
+    .default("false")
+    .transform((v) => v.toLowerCase() === "true"),
+  /** Which subprocess engine to run. `none` disables OCR regardless. */
+  OCR_ENGINE: z.enum(["none", "ocrs", "pp-ocrv6"]).default("ocrs"),
+  OCR_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+
+  /** Path to the `ocrs` CLI binary (https://github.com/robertknight/ocrs). */
+  OCRS_BIN: z.string().default("ocrs"),
+
+  /** Python interpreter + script that run PP-OCRv6 and emit JSON on stdout. */
+  PP_OCR_PYTHON: z.string().default("python3"),
+  PP_OCR_SCRIPT: z.string().default("scripts/pp_ocr.py"),
+  /** Optional local model dir for PP-OCRv6 (passed through to the script). */
+  PP_OCR_MODEL_DIR: z.string().optional(),
 });
 
 export type AppConfig = z.infer<typeof schema>;

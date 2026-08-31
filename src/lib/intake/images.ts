@@ -161,6 +161,35 @@ export interface IntakeImageFile {
 }
 
 /**
+ * Resolve the absolute filesystem path of a stored cover photo, for engines
+ * (OCR) that operate on a file path. Returns `undefined` if the book/kind has
+ * no image or the file is missing on disk.
+ */
+export function getIntakeImagePath(
+  sessionId: string,
+  bookId: string,
+  kind: IntakeImageKind,
+): string | undefined {
+  const db = getDb();
+  const row = db
+    .select({ filePath: intakeImages.filePath })
+    .from(intakeImages)
+    .innerJoin(intakeBooks, eq(intakeBooks.id, intakeImages.bookId))
+    .where(
+      and(
+        eq(intakeImages.bookId, bookId),
+        eq(intakeImages.kind, kind),
+        eq(intakeBooks.sessionId, sessionId),
+      ),
+    )
+    .get();
+  if (!row) return undefined;
+
+  const absolute = absoluteImagePath(row.filePath);
+  return existsSync(absolute) ? absolute : undefined;
+}
+
+/**
  * Read a stored cover photo's bytes for serving/OCR. Returns `undefined` if
  * the book/kind has no image (or the row exists but the file is missing).
  */

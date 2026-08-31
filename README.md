@@ -127,6 +127,46 @@ relevant:
 | `OPEN_LIBRARY_USER_AGENT` | `r2c-magic/0.1 …` | Required by Open Library policy |
 | `INCLUDE_ERROR_COLUMN` | `true` | Append the per-row error column to exports |
 | `ERROR_COLUMN_NAME` | `_enrichment_errors` | Name of that column |
+| `OCR_ENABLED` | `false` | Master switch for server-side cover OCR |
+| `OCR_ENGINE` | `ocrs` | Which OCR engine: `ocrs`, `pp-ocrv6`, or `none` |
+| `OCR_TIMEOUT_MS` | `30000` | Per-image OCR subprocess timeout |
+| `OCRS_BIN` | `ocrs` | Path to the `ocrs` CLI binary |
+| `PP_OCR_PYTHON` | `python3` | Python interpreter for the PP-OCRv6 script |
+| `PP_OCR_SCRIPT` | `scripts/pp_ocr.py` | PP-OCRv6 runner script |
+| `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory |
+
+## Cover OCR engines (US-D3/D4)
+
+Cover photos are OCR'd **server-side** to pre-fill the title (front cover) and
+description (back cover). OCR is **off by default** (`OCR_ENABLED=false`); the
+photo flow still works and simply skips the suggestion. Two subprocess engines
+sit behind one interface (`src/lib/ocr/`) so they can be benchmarked by
+switching `OCR_ENGINE`:
+
+- **`ocrs`** — [robertknight/ocrs](https://github.com/robertknight/ocrs), a
+  Rust OCR CLI (Latin script). Install with Cargo; it downloads its models to
+  `~/.cache/ocrs` on first run:
+
+  ```sh
+  cargo install ocrs-cli --locked
+  ```
+
+- **`pp-ocrv6`** — PaddlePaddle PP-OCRv6 via `scripts/pp_ocr.py`, which prints
+  `{"lines": [...]}`. Install the Python runtime once:
+
+  ```sh
+  pip install paddleocr paddlepaddle
+  ```
+
+Validate either engine end-to-end against a sample cover:
+
+```sh
+# drop a book cover as tests/integration/__fixtures__/cover.jpg, then:
+pnpm test:lib:integration
+```
+
+The default `pnpm test` never touches these engines — OCR is exercised with a
+stub, keeping the unit suite hermetic.
 
 ## Mapping configuration
 

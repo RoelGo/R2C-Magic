@@ -1,0 +1,8 @@
+# Local benchmarking images — do not commit.
+cover.jpg
+cover.jpeg
+cover.png
+*.jpg
+*.jpeg
+*.png
+!README.md

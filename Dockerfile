@@ -49,7 +49,28 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/db/migrations ./src/lib/db/migrations
 COPY --from=builder --chown=nextjs:nodejs /app/mapping.config.json ./mapping.config.json
+# PP-OCRv6 runner script (used only when OCR_ENGINE=pp-ocrv6). Harmless to
+# ship even when OCR is disabled.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
+
+# --- Cover OCR engines (optional) -------------------------------------------
+# OCR is OFF by default (OCR_ENABLED=false), so the base image stays lean. To
+# benchmark/enable an engine, extend this image and install its runtime:
+#
+#   # ocrs (Rust CLI) — https://github.com/robertknight/ocrs
+#   RUN apt-get update && apt-get install -y --no-install-recommends \
+#         cargo ca-certificates && rm -rf /var/lib/apt/lists/* \
+#     && cargo install ocrs-cli --locked \
+#     && ln -s /root/.cargo/bin/ocrs /usr/local/bin/ocrs
+#
+#   # PP-OCRv6 (Python) — scripts/pp_ocr.py
+#   RUN apt-get update && apt-get install -y --no-install-recommends \
+#         python3 python3-pip && rm -rf /var/lib/apt/lists/* \
+#     && pip3 install --no-cache-dir paddleocr paddlepaddle
+#
+# Then run with e.g. OCR_ENABLED=true OCR_ENGINE=ocrs.
+
 
 # NOTE: we intentionally do NOT set `USER nextjs` here. The container starts as
 # root so docker-entrypoint.sh can align the runtime user with the host's

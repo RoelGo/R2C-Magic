@@ -43,6 +43,13 @@
       "when": 1781094300000,
       "tag": "0005_intake_images",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1781094400000,
+      "tag": "0006_intake_ocr",
+      "breakpoints": true
     }
   ]
 }

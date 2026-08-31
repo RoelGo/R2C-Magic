@@ -161,6 +161,30 @@ export const intakeBooks = sqliteTable("intake_books", {
   enrichedPayload: text("enriched_payload", { mode: "json" }),
   /** Per-source enrichment errors as a JSON array of { source, message }. */
   enrichmentErrors: text("enrichment_errors", { mode: "json" }),
+  /**
+   * Server-side cover OCR lifecycle (spec v2 US-D3/D4), independent of the
+   * enrichment and push states. Runs after a cover photo is uploaded.
+   *  - `idle`    — no photo OCR'd yet
+   *  - `running` — an engine is processing a cover image
+   *  - `done`    — finished with at least one usable field (title/description)
+   *  - `empty`   — finished but nothing usable was read
+   *  - `failed`  — the engine errored on every attempted image
+   */
+  ocrStatus: text("ocr_status", {
+    enum: ["idle", "running", "done", "empty", "failed"],
+  })
+    .notNull()
+    .default("idle"),
+  /** Which engine produced the current OCR result (for benchmarking). */
+  ocrEngine: text("ocr_engine"),
+  /** Title candidate read off the front cover (null until OCR'd). */
+  ocrTitle: text("ocr_title"),
+  /** Optional author candidate read off the front cover. */
+  ocrAuthor: text("ocr_author"),
+  /** Description candidate read off the back cover. */
+  ocrDescription: text("ocr_description"),
+  /** Per-image OCR errors as a JSON array of { kind, message }. */
+  ocrErrors: text("ocr_errors", { mode: "json" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

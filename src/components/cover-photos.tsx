@@ -8,6 +8,8 @@ interface CoverPhotosProps {
   bookId: string;
   /** Which covers already have a stored photo, from the server. */
   captured: { front: boolean; back: boolean };
+  /** Notified after each successful upload so a sibling (OCR) can re-poll. */
+  onUploaded?: () => void;
 }
 
 type Kind = "front" | "back";
@@ -20,7 +22,7 @@ type Kind = "front" | "back";
  * UX), and the returned file is uploaded to the images route. The backend,
  * table, and validation are unchanged. OCR is a separate slice.
  */
-export function CoverPhotos({ sessionId, bookId, captured }: CoverPhotosProps) {
+export function CoverPhotos({ sessionId, bookId, captured, onUploaded }: CoverPhotosProps) {
   const router = useRouter();
   const [uploading, setUploading] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export function CoverPhotos({ sessionId, bookId, captured }: CoverPhotosProps) {
         throw new Error(data.error ?? "Upload failed");
       }
       setVersion((v) => v + 1);
+      onUploaded?.();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
