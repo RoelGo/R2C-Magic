@@ -15,7 +15,8 @@
       "src/lib/db/migrations",
       "imports",
       "templates",
-      "public"
+      "public",
+      "tests/integration/ocr-result-*.json"
     ]
   },
   "formatter": {

@@ -1,8 +1,7 @@
-# Local benchmarking images — do not commit.
-cover.jpg
-cover.jpeg
-cover.png
+# Local benchmarking images. `cover.jpg` is committed as the shared reference
+# used by the OCR engine snapshots; other ad-hoc images stay local.
 *.jpg
 *.jpeg
 *.png
+!cover.jpg
 !README.md

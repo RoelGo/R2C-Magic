@@ -40,5 +40,10 @@ coverage
 playwright-report
 test-results
 
+# python (OCR virtualenv + caches — see scripts/pp_ocr.py)
+.venv*/
+__pycache__/
+*.pyc
+
 # os
 Thumbs.db

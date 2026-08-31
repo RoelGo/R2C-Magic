@@ -12,8 +12,12 @@ treat the first lines of a front cover as the title.
 Usage:
     python3 scripts/pp_ocr.py <image> [--model-dir DIR]
 
-Setup (once per environment; see README):
-    pip install paddleocr paddlepaddle
+Setup (once per environment; see README). Use a virtualenv so it works
+regardless of a Homebrew/system Python that blocks global installs:
+    python3 -m venv .venv-ocr
+    .venv-ocr/bin/pip install paddleocr paddlepaddle
+Then point the app at it with PP_OCR_PYTHON=.venv-ocr/bin/python
+(requires PaddleOCR 3.x, which runs the PP-OCRv6 pipeline).
 
 The heavy model/runtime deliberately lives here rather than in the Node
 process, so the app runs without OCR installed and the engine is swappable by
@@ -49,30 +53,35 @@ def main() -> int:
         return 2
 
     # `lang='en'` covers the Latin-script (NL/EN) book covers in scope.
-    # PaddleOCR downloads PP-OCRv6 weights on first use unless a local
-    # model dir is supplied.
-    kwargs = {"lang": "en", "use_angle_cls": True, "show_log": False}
+    # PaddleOCR 3.x runs the PP-OCRv6 pipeline and downloads the det/rec
+    # weights on first use unless a local model dir is supplied. We disable the
+    # document-orientation / unwarping / textline-orientation sub-models: book
+    # covers are already upright, so skipping them is faster and avoids extra
+    # model downloads.
+    kwargs = {
+        "lang": "en",
+        "use_doc_orientation_classify": False,
+        "use_doc_unwarping": False,
+        "use_textline_orientation": False,
+    }
     if args.model_dir:
-        # Newer PaddleOCR builds accept explicit det/rec model dirs; pass the
-        # same dir for both and let PaddleOCR resolve the sub-models.
-        kwargs["det_model_dir"] = args.model_dir
-        kwargs["rec_model_dir"] = args.model_dir
+        # Point both detection and recognition at the supplied local models.
+        kwargs["text_detection_model_dir"] = args.model_dir
+        kwargs["text_recognition_model_dir"] = args.model_dir
 
     try:
         ocr = PaddleOCR(**kwargs)
-        raw = ocr.ocr(args.image, cls=True)
+        results = ocr.predict(args.image)
     except Exception as exc:  # noqa: BLE001 - surface any engine failure
         eprint(f"PP-OCRv6 failed: {exc}")
         return 1
 
     lines: list[str] = []
-    # PaddleOCR returns a list (per image) of [box, (text, score)] entries.
-    for page in raw or []:
-        for entry in page or []:
-            try:
-                text = entry[1][0]
-            except (IndexError, TypeError):
-                continue
+    # PaddleOCR 3.x returns one result object per input image; recognised
+    # strings live under `rec_texts`, already ordered top-to-bottom.
+    for result in results or []:
+        texts = result.get("rec_texts", []) if hasattr(result, "get") else []
+        for text in texts:
             if isinstance(text, str) and text.strip():
                 lines.append(text.strip())
 

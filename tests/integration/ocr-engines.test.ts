@@ -37,9 +37,14 @@ function commandAvailable(cmd: string, args: string[]): boolean {
   }
 }
 
-const ocrsAvailable = commandAvailable("ocrs", ["--help"]);
+// Honour the same env the engine adapters use, so a virtualenv Python
+// (PP_OCR_PYTHON=.venv-ocr/bin/python) is detected rather than the system one.
+const ppPython = process.env.PP_OCR_PYTHON ?? "python3";
+const ocrsBin = process.env.OCRS_BIN ?? "ocrs";
+
+const ocrsAvailable = commandAvailable(ocrsBin, ["--help"]);
 const ppAvailable =
-  commandAvailable("python3", ["-c", "import paddleocr"]) &&
+  commandAvailable(ppPython, ["-c", "import paddleocr"]) &&
   existsSync(join(process.cwd(), "scripts", "pp_ocr.py"));
 
 async function expectSomeText(id: OcrEngineId) {
@@ -47,6 +52,7 @@ async function expectSomeText(id: OcrEngineId) {
   const result = await engine.recognize(FIXTURE);
   // Connectivity check: the pipeline ran and returned a well-formed result.
   expect(Array.isArray(result.lines)).toBe(true);
+  await expect(JSON.stringify(result, null, 2)).toMatchFileSnapshot(`ocr-result-${id}.json`);
   expect(result.text.length).toBeGreaterThan(0);
 }
 

@@ -152,21 +152,43 @@ switching `OCR_ENGINE`:
   ```
 
 - **`pp-ocrv6`** — PaddlePaddle PP-OCRv6 via `scripts/pp_ocr.py`, which prints
-  `{"lines": [...]}`. Install the Python runtime once:
+  `{"lines": [...]}`. It needs PaddleOCR **3.x**. A Homebrew/system Python may
+  refuse a global `pip install`, so use a virtualenv:
 
   ```sh
-  pip install paddleocr paddlepaddle
+  python3 -m venv .venv-ocr
+  .venv-ocr/bin/pip install paddleocr paddlepaddle
   ```
 
-Validate either engine end-to-end against a sample cover:
+  Then point the app at that interpreter:
+
+  ```sh
+  PP_OCR_PYTHON=.venv-ocr/bin/python OCR_ENABLED=true OCR_ENGINE=pp-ocrv6 pnpm dev
+  ```
+
+Validate either engine end-to-end against the committed sample cover
+(`tests/integration/__fixtures__/cover.jpg`):
 
 ```sh
-# drop a book cover as tests/integration/__fixtures__/cover.jpg, then:
-pnpm test:lib:integration
+pnpm test:lib:integration                          # ocrs only
+PP_OCR_PYTHON=.venv-ocr/bin/python \
+  OCR_TIMEOUT_MS=120000 pnpm test:lib:integration  # both engines
 ```
 
 The default `pnpm test` never touches these engines — OCR is exercised with a
 stub, keeping the unit suite hermetic.
+
+### Accuracy vs. speed (benchmark)
+
+On the sample cover, **PP-OCRv6 is far more accurate** than `ocrs` (clean,
+correctly-spelled lines vs. heavily garbled text), but each invocation reloads
+its models and takes **~60s**, whereas `ocrs` runs in **~0.5s**. The default is
+therefore `ocrs`; switch to `pp-ocrv6` when accuracy matters more than latency.
+The committed snapshots (`tests/integration/ocr-result-*.json`) capture each
+engine's exact output for comparison. Eliminating PP-OCRv6's per-photo cold
+start (e.g. a warm, long-lived worker process) is tracked as a separate story
+— see the roadmap.
+
 
 ## Mapping configuration
 
@@ -220,6 +242,14 @@ The remaining 24 columns are actively populated.
   (requires rokko's CB credentials).
 - **M4** — Tauri desktop bundle: signed `.dmg`, `.msi`, and `.AppImage`
   installers via GitHub Actions.
+
+### Deferred stories
+
+- **Warm PP-OCRv6 worker.** PP-OCRv6 currently reloads its models on every
+  photo (~60s/invocation). Replace the per-image `python3 scripts/pp_ocr.py`
+  subprocess with a long-lived worker that loads the models once and serves
+  requests, so PP-OCRv6 becomes usable at interactive latency without
+  sacrificing its accuracy advantage over `ocrs`.
 
 ## License
 
