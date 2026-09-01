@@ -1,8 +1,10 @@
 import { CoverStep } from "@/components/cover-step";
 import { EanCapture } from "@/components/ean-capture";
 import { EnrichmentStatus } from "@/components/enrichment-status";
+import { ReviewForm } from "@/components/review-form";
 import { getIntakeBook } from "@/lib/intake";
 import { listIntakeImages } from "@/lib/intake/images";
+import { buildReviewModel } from "@/lib/intake/review";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -26,6 +28,8 @@ export default async function IntakeBookPage({ params }: Props) {
     front: images.some((i) => i.kind === "front"),
     back: images.some((i) => i.kind === "back"),
   };
+
+  const reviewModel = buildReviewModel(id, bookId);
 
   return (
     <div className="space-y-6">
@@ -59,8 +63,19 @@ export default async function IntakeBookPage({ params }: Props) {
         <CoverStep sessionId={id} bookId={bookId} captured={captured} />
       </section>
 
+      <section className="space-y-3">
+        <h3 className="text-lg font-semibold">4. Review</h3>
+        {reviewModel ? (
+          <ReviewForm
+            sessionId={id}
+            bookId={bookId}
+            model={{ ...reviewModel, hasFrontImage: captured.front }}
+          />
+        ) : null}
+      </section>
+
       <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-        The pre-filled review form and the push to the webshop arrive in the next slices.
+        The push to the webshop arrives in the next slice.
       </div>
     </div>
   );

@@ -185,6 +185,25 @@ export const intakeBooks = sqliteTable("intake_books", {
   ocrDescription: text("ocr_description"),
   /** Per-image OCR errors as a JSON array of { kind, message }. */
   ocrErrors: text("ocr_errors", { mode: "json" }),
+  /**
+   * Worker-confirmed values from the assisted review form (spec v2 Slice E,
+   * US-E1/E2). These are the authoritative values pushed to the webshop in
+   * Slice F — distinct from the enrichment/OCR *suggestions* above, which the
+   * worker adopts or overrides. Null until the review form is saved.
+   */
+  reviewedTitle: text("reviewed_title"),
+  reviewedAuthor: text("reviewed_author"),
+  reviewedDescription: text("reviewed_description"),
+  reviewedWeightGrams: integer("reviewed_weight_grams"),
+  /**
+   * Chosen provenance per field (US-E2), for later QA / source tuning:
+   *  - `online`  — adopted from an online-catalog suggestion
+   *  - `ocr`     — adopted from a cover-OCR suggestion
+   *  - `manual`  — typed/edited by the worker
+   */
+  titleSource: text("title_source", { enum: ["online", "ocr", "manual"] }),
+  authorSource: text("author_source", { enum: ["online", "ocr", "manual"] }),
+  descriptionSource: text("description_source", { enum: ["online", "ocr", "manual"] }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

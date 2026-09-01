@@ -2,8 +2,10 @@
 
 import { addBookToSession, createSession, setBookEan } from "@/lib/intake";
 import { startEnrichment } from "@/lib/intake/enrichment";
+import { type SaveReviewInput, saveIntakeReview } from "@/lib/intake/review";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { ZodError } from "zod";
 
 /**
  * Server action: start a new intake session and redirect the worker to it
@@ -55,5 +57,32 @@ export async function setBookEanAction(
     return { ok: true, ean };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to save EAN" };
+  }
+}
+
+export type SaveReviewResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Server action: validate and persist the assisted review form (spec v2
+ * US-E1/E2/E3). Called from the client review form, so it returns a result
+ * object (rather than throwing) to drive inline validation. On success the
+ * book + session views are revalidated so the confirmed title appears in the
+ * list. The webshop push is a separate step (Slice F).
+ */
+export async function saveIntakeReviewAction(
+  sessionId: string,
+  bookId: string,
+  input: SaveReviewInput,
+): Promise<SaveReviewResult> {
+  try {
+    saveIntakeReview(sessionId, bookId, input);
+    revalidatePath(`/intake/${sessionId}/books/${bookId}`);
+    revalidatePath(`/intake/${sessionId}`);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof ZodError) {
+      return { ok: false, error: err.issues[0]?.message ?? "Invalid review details" };
+    }
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to save review" };
   }
 }
