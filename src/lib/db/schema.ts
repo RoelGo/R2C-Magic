@@ -241,6 +241,33 @@ export const intakeImages = sqliteTable(
   (t) => ({ pk: primaryKey({ columns: [t.bookId, t.kind] }) }),
 );
 
+/**
+ * v2 (Slice F) — `lightspeed_connection`: the app's single OAuth link to a
+ * Lightspeed Retail (R-Series) account. rokko runs an omnichannel plan, so
+ * products are pushed through the Retail API; this holds the access/refresh
+ * tokens from the authorization-code-grant flow. Single-tenant, self-hosted
+ * app → exactly one row (`id = "default"`). Tokens are secrets stored in the
+ * gitignored SQLite DB under DATA_DIR; the refresh token rotates on every use.
+ */
+export const lightspeedConnection = sqliteTable("lightspeed_connection", {
+  /** Always the constant `"default"` — one connection per install. */
+  id: text("id").primaryKey(),
+  /** Retail account id (the `acct` claim in the access-token JWT). */
+  accountId: text("account_id").notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  /** Absolute expiry of the access token (from `expires_in` at issue time). */
+  accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp_ms" }).notNull(),
+  /** Space-separated scopes actually granted. */
+  scope: text("scope"),
+  connectedAt: integer("connected_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .default(sql`(unixepoch() * 1000)`),
+});
+
 export type Run = InferSelectModel<typeof runs>;
 export type NewRun = InferInsertModel<typeof runs>;
 export type BookRow = InferSelectModel<typeof books>;
@@ -253,3 +280,5 @@ export type IntakeBookRow = InferSelectModel<typeof intakeBooks>;
 export type NewIntakeBookRow = InferInsertModel<typeof intakeBooks>;
 export type IntakeImageRow = InferSelectModel<typeof intakeImages>;
 export type NewIntakeImageRow = InferInsertModel<typeof intakeImages>;
+export type LightspeedConnectionRow = InferSelectModel<typeof lightspeedConnection>;
+export type NewLightspeedConnectionRow = InferInsertModel<typeof lightspeedConnection>;

@@ -21,9 +21,18 @@ export default function IntakePage() {
           <h2 className="text-2xl font-semibold">New arrivals</h2>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Add newly delivered books to the webshop one at a time: scan, snap a couple of photos,
-            confirm the pre-filled details, and push to Lightspeed eCom. Start a session below.
+            confirm the pre-filled details, and push to Lightspeed Retail. Start a session below.
           </p>
         </header>
+
+        <p className="text-sm">
+          <Link
+            href="/settings/lightspeed"
+            className="text-blue-600 hover:underline dark:text-blue-400"
+          >
+            Lightspeed connection settings →
+          </Link>
+        </p>
 
         <form action={startIntakeSessionAction} className="space-y-3">
           <div className="space-y-1">

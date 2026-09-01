@@ -135,6 +135,41 @@ relevant:
 | `PP_OCR_SCRIPT` | `scripts/pp_ocr.py` | PP-OCRv6 runner script |
 | `PP_OCR_MODEL_SIZE` | `tiny` | PP-OCRv6 variant: `tiny`, `small`, or `medium` |
 | `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory (overrides size) |
+| `LIGHTSPEED_CLIENT_ID` | — | Lightspeed Retail OAuth client id (see below) |
+| `LIGHTSPEED_CLIENT_SECRET` | — | Lightspeed Retail OAuth client secret |
+| `LIGHTSPEED_REDIRECT_URI` | — | OAuth callback URL; must match the registered client exactly |
+| `LIGHTSPEED_SCOPES` | `employee:all` | Space-separated OAuth scopes to request |
+
+## Lightspeed Retail connection (spec v2 Slice F)
+
+rokko runs a Lightspeed **omnichannel** subscription, so webshop products are
+managed through the **Retail (R-Series) API** rather than the eCom API. Before
+the app can push intake books, it must be authorized against the Retail
+account using the OAuth 2.0 authorization-code grant (with PKCE).
+
+**One-time setup:**
+
+1. Register an API client at
+   [Lightspeed Retail → API Clients](https://developers.lightspeedhq.com/retail/authentication/clients/).
+   Set its redirect URI to `<your app URL>/api/lightspeed/callback` (e.g.
+   `https://intake.rokko.coop/api/lightspeed/callback`).
+2. Put the client id/secret and the **exact** redirect URI in the environment:
+   `LIGHTSPEED_CLIENT_ID`, `LIGHTSPEED_CLIENT_SECRET`, `LIGHTSPEED_REDIRECT_URI`
+   (optionally `LIGHTSPEED_SCOPES`). Restart the app.
+3. Open **Settings → Lightspeed** (`/settings/lightspeed`) and click
+   **Connect to Lightspeed**. Log in and approve; you're redirected back and
+   the connection is stored.
+
+The access token (~60 min) is refreshed automatically using the stored refresh
+token, which rotates on every use — no re-authorization is needed as long as
+the app is used at least once every 30 days. Tokens live in the single
+`lightspeed_connection` row in the gitignored SQLite DB; **Disconnect** revokes
+them with Lightspeed and removes the local row. If the credentials are absent,
+the settings page simply shows "not configured" and the rest of the app is
+unaffected.
+
+> This slice implements the **connection** only. Pushing products to Retail
+> (US-F1/F2/F3) builds on `getValidAccessToken()` in a follow-up slice.
 
 ## Cover OCR engines (US-D3/D4)
 

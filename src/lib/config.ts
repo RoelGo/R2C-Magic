@@ -70,6 +70,26 @@ const schema = z.object({
   PP_OCR_MODEL_SIZE: z.enum(["medium", "small", "tiny"]).default("tiny"),
   /** Optional local model dir for PP-OCRv6 (overrides PP_OCR_MODEL_SIZE). */
   PP_OCR_MODEL_DIR: z.string().optional(),
+
+  /**
+   * Lightspeed Retail (R-Series) OAuth client credentials (spec v2 Slice F).
+   * rokko runs an omnichannel subscription, so products are pushed through the
+   * Retail API rather than the eCom API. The connection flow (authorization
+   * code grant + PKCE) is only offered when the client id/secret/redirect are
+   * all present; otherwise the settings page shows "not configured" and the
+   * app runs exactly as before. Secrets are optional so the app still boots
+   * (and the test suite runs) without a Lightspeed account.
+   */
+  LIGHTSPEED_CLIENT_ID: z.string().optional(),
+  LIGHTSPEED_CLIENT_SECRET: z.string().optional(),
+  /**
+   * The redirect URI registered with the Lightspeed OAuth client. Must exactly
+   * match the callback this app exposes, e.g.
+   * `https://intake.rokko.coop/api/lightspeed/callback`.
+   */
+  LIGHTSPEED_REDIRECT_URI: z.string().url().optional(),
+  /** Space-separated access scopes requested during authorization. */
+  LIGHTSPEED_SCOPES: z.string().default("employee:all"),
 });
 
 export type AppConfig = z.infer<typeof schema>;

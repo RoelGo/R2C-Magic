@@ -57,6 +57,13 @@
       "when": 1781094500000,
       "tag": "0007_intake_review",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1781094600000,
+      "tag": "0008_lightspeed_connection",
+      "breakpoints": true
     }
   ]
 }

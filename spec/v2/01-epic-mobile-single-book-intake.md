@@ -342,30 +342,50 @@ push an empty product.*
 
 ---
 
-### Slice F — Push to Lightspeed eCom
+### Slice F — Push to Lightspeed Retail
 
-#### US-F1 — Submit the book to Lightspeed eCom (L)
+> **Pivot (eCom → Retail).** rokko is on a Lightspeed **omnichannel**
+> subscription, where products cannot be created/updated through the eCom API
+> (see the [omnichannel note](https://developers.lightspeedhq.com/ecom/introduction/omnichannel/)).
+> Slice F therefore targets the **Retail (R-Series) API** instead. The user
+> stories below are unchanged in intent; only the transport changes. Open
+> questions: not all intake metadata may be settable via the Retail API — most
+> fields are expected to go through Retail **imports**, and images through the
+> API (to be confirmed; we may need to pivot the field set again).
+>
+> **F0 — OAuth connection (done, this slice).** Before any push, the app
+> authorizes against the Retail account via the OAuth 2.0 authorization-code
+> grant with PKCE
+> ([docs](https://developers.lightspeedhq.com/retail/authentication/authorization-code-grant/)).
+> Implemented in `src/lib/lightspeed/` (`oauth.ts` + `connection.ts`), with
+> `GET /api/lightspeed/connect` + `/callback` routes, a `lightspeed_connection`
+> token table, and a **Settings → Lightspeed** page to connect/disconnect.
+> `LIGHTSPEED_CLIENT_ID/SECRET/REDIRECT_URI/SCOPES` are read via `config.ts`.
+> Access tokens refresh automatically (refresh-token rotation). US-F1/F2/F3
+> below build on `getValidAccessToken()`.
+
+#### US-F1 — Submit the book to Lightspeed Retail (L)
 *As a worker, I want submitting the form to create/update the product in the
 webshop so the book goes live without a CSV export.*
 
-- On submit, the app calls the Lightspeed eCom **Product** API
-  (https://developers.lightspeedhq.com/ecom/endpoints/product/) to
-  create/update the product with the confirmed title, description, author, and
-  weight.
+- On submit, the app creates/updates the product via the Lightspeed **Retail**
+  API (Item + related endpoints) — or, where a field is not settable via the
+  API, stages it for a Retail **import** — with the confirmed title,
+  description, author, and weight.
 - Reuses the v1 R→C field semantics where they still apply (mapping remains the
-  source of truth for field shapes), adapted to the eCom API payload instead of
+  source of truth for field shapes), adapted to the Retail payload instead of
   a CSV row.
 - API failures are surfaced to the worker with a retry option; the book is kept
   as a recoverable `draft` (never silently lost).
-- New env/config for eCom credentials (base URL, API key/secret) via
-  `src/lib/config.ts` only (AGENTS.md rule #4). No `process.env` elsewhere.
+- New env/config for Retail credentials (client id/secret, redirect, scopes)
+  via `src/lib/config.ts` only (AGENTS.md rule #4). No `process.env` elsewhere.
 
-#### US-F2 — Upload cover images to eCom (M)
+#### US-F2 — Upload cover images to Retail (M)
 *As a worker, I want my cover photos attached to the webshop product so
 customers see them.*
 
-- The front (primary) and back images are uploaded to the product via the eCom
-  Product image endpoint(s).
+- The front (primary) and back images are uploaded to the item via the Retail
+  Item Image endpoint(s).
 - Image order/roles: front = main image, back = secondary.
 - Upload failures are retryable and do not lose the already-created product;
   the product-content push (US-F1) and image push are independently recoverable.
