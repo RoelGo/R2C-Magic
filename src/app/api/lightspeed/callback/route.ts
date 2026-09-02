@@ -61,7 +61,6 @@ export async function GET(request: Request): Promise<NextResponse> {
     const tokens = await exchangeCodeForTokens(client, {
       code,
       codeVerifier: verifier,
-      redirectUri: client.redirectUri,
     });
     saveTokens(tokens);
     return settingsRedirect(request, "connected");

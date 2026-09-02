@@ -97,7 +97,6 @@ describe("lightspeed/oauth — token HTTP calls", () => {
     const tokens = await exchangeCodeForTokens(client, {
       code: "the-code",
       codeVerifier: "the-verifier",
-      redirectUri: "https://app/cb",
     });
 
     expect(tokens).toEqual({
@@ -117,8 +116,9 @@ describe("lightspeed/oauth — token HTTP calls", () => {
       grant_type: "authorization_code",
       code: "the-code",
       code_verifier: "the-verifier",
-      redirect_uri: "https://app/cb",
     });
+    // Lightspeed's token endpoint rejects redirect_uri — it must NOT be sent.
+    expect(body).not.toHaveProperty("redirect_uri");
   });
 
   it("refreshes using grant_type=refresh_token", async () => {

@@ -181,10 +181,18 @@ function safeErrorHint(body: string): string | undefined {
   }
 }
 
-/** Exchange an authorization code (+ PKCE verifier) for tokens. */
+/**
+ * Exchange an authorization code (+ PKCE verifier) for tokens.
+ *
+ * Note: Lightspeed's token endpoint does NOT accept a `redirect_uri` parameter
+ * — it uses the redirect URI registered on the OAuth client. Sending one is
+ * rejected with "Invalid redirect URI", so we deliberately omit it (matching
+ * the documented request:
+ * https://developers.lightspeedhq.com/retail/authentication/authorization-code-grant/).
+ */
 export async function exchangeCodeForTokens(
   client: OAuthClient,
-  args: { code: string; codeVerifier: string; redirectUri: string },
+  args: { code: string; codeVerifier: string },
 ): Promise<OAuthTokens> {
   return postToken({
     client_id: client.clientId,
@@ -192,7 +200,6 @@ export async function exchangeCodeForTokens(
     grant_type: "authorization_code",
     code: args.code,
     code_verifier: args.codeVerifier,
-    redirect_uri: args.redirectUri,
   });
 }
 
