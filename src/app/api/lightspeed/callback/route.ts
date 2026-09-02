@@ -1,5 +1,6 @@
 import { exchangeCodeForTokens, getOAuthClient, saveTokens } from "@/lib/lightspeed";
 import { logger } from "@/lib/logger";
+import { publicUrl } from "@/lib/urls";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE } from "../connect/route";
@@ -12,7 +13,9 @@ function settingsRedirect(
   status: "connected" | "error",
   reason?: string,
 ): NextResponse {
-  const url = new URL("/settings/lightspeed", request.url);
+  // Build against the public origin (APP_BASE_URL) so the browser is not sent
+  // to the container's internal bind address behind a reverse proxy.
+  const url = publicUrl("/settings/lightspeed", request);
   url.searchParams.set("status", status);
   if (reason) url.searchParams.set("reason", reason);
   return NextResponse.redirect(url);

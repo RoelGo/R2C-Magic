@@ -1,5 +1,6 @@
 import { buildAuthorizeUrl, createPkce, createState, getOAuthClient } from "@/lib/lightspeed";
 import { logger } from "@/lib/logger";
+import { publicOrigin } from "@/lib/urls";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -38,7 +39,9 @@ export async function GET(): Promise<NextResponse> {
   });
 
   const jar = await cookies();
-  const secure = client.redirectUri.startsWith("https://");
+  // Prefer the public origin's scheme for the cookie's `secure` flag; fall back
+  // to the redirect URI scheme when APP_BASE_URL is unset.
+  const secure = (publicOrigin() ?? client.redirectUri).startsWith("https://");
   const cookieOpts = {
     httpOnly: true,
     secure,

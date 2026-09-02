@@ -116,6 +116,7 @@ relevant:
 | Variable | Default | Purpose |
 |---|---|---|
 | `PORT` | `3000` | HTTP port |
+| `APP_BASE_URL` | — | Canonical public origin (e.g. `https://intake.rokko.coop`) for OAuth redirects; set behind a reverse proxy. Falls back to the request origin when unset |
 | `DATABASE_URL` | `./data/r2c.db` | SQLite file path |
 | `DATA_DIR` | `./data` | Directory for uploads, exports, DB |
 | `ENRICH_CONCURRENCY` | `5` | Books enriched in parallel |
@@ -155,10 +156,20 @@ account using the OAuth 2.0 authorization-code grant (with PKCE).
    `https://intake.rokko.coop/api/lightspeed/callback`).
 2. Put the client id/secret and the **exact** redirect URI in the environment:
    `LIGHTSPEED_CLIENT_ID`, `LIGHTSPEED_CLIENT_SECRET`, `LIGHTSPEED_REDIRECT_URI`
-   (optionally `LIGHTSPEED_SCOPES`). Restart the app.
+   (optionally `LIGHTSPEED_SCOPES`). Also set `APP_BASE_URL` to the same public
+   origin (e.g. `https://intake.rokko.coop`) so the post-login redirect lands on
+   the public host rather than the container's internal address. Restart the app.
 3. Open **Settings → Lightspeed** (`/settings/lightspeed`) and click
    **Connect to Lightspeed**. Log in and approve; you're redirected back and
    the connection is stored.
+
+**Deployment note (Docker):** `docker-compose.yml` loads these from the host's
+`.env` (`env_file: .env`). After editing `.env`, recreate the container
+(`docker compose up -d`) and verify the values reached it with
+`docker compose exec app printenv | grep -E 'LIGHTSPEED|APP_BASE_URL'`. If the
+callback redirects to `…?status=error&reason=not-configured`, the `LIGHTSPEED_*`
+variables are not present in the running container. If the redirect lands on
+`0.0.0.0:3000`, `APP_BASE_URL` is unset.
 
 The access token (~60 min) is refreshed automatically using the stored refresh
 token, which rotates on every use — no re-authorization is needed as long as

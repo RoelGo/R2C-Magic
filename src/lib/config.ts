@@ -12,6 +12,17 @@ const schema = z.object({
   DATABASE_URL: z.string().default("./data/r2c.db"),
   DATA_DIR: z.string().default("./data"),
 
+  /**
+   * The app's canonical public origin, e.g. `https://intake.rokko.coop`. Used
+   * to build absolute redirect URLs (notably the Lightspeed OAuth callback →
+   * settings redirect) so they point at the externally reachable host rather
+   * than the container bind address. Behind a reverse proxy, a route handler's
+   * `request.url` host is the internal bind (e.g. `0.0.0.0:3000`); set this to
+   * the public URL to override it. Optional so dev/tests fall back to
+   * `request.url`. Must NOT be `localhost`/`0.0.0.0` in production.
+   */
+  APP_BASE_URL: z.string().url().optional(),
+
   ENRICH_CONCURRENCY: z.coerce.number().int().positive().default(5),
   ENRICH_CACHE_TTL_DAYS: z.coerce.number().int().positive().default(30),
   /**
