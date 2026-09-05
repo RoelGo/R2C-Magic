@@ -204,6 +204,18 @@ export const intakeBooks = sqliteTable("intake_books", {
   titleSource: text("title_source", { enum: ["online", "ocr", "manual"] }),
   authorSource: text("author_source", { enum: ["online", "ocr", "manual"] }),
   descriptionSource: text("description_source", { enum: ["online", "ocr", "manual"] }),
+  /**
+   * Lightspeed Retail push state (spec v2 Slice F, US-F1/F2), layered onto the
+   * `status` lifecycle above.
+   *  - `retailItemID`  — the matched Retail Item id (set on a successful push;
+   *    kept so a re-push is idempotent and update-only, per rokko's decision).
+   *  - `pushError`     — the last push failure message, for the retry UI. Null
+   *    while `draft`/`pushed`; set alongside `status = "failed"`.
+   *  - `pushedAt`      — when the book last pushed successfully (null until then).
+   */
+  retailItemID: text("retail_item_id"),
+  pushError: text("push_error"),
+  pushedAt: integer("pushed_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .default(sql`(unixepoch() * 1000)`),

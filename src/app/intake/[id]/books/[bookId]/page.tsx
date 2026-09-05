@@ -1,6 +1,7 @@
 import { CoverStep } from "@/components/cover-step";
 import { EanCapture } from "@/components/ean-capture";
 import { EnrichmentStatus } from "@/components/enrichment-status";
+import { PushStep } from "@/components/push-step";
 import { ReviewForm } from "@/components/review-form";
 import { getIntakeBook } from "@/lib/intake";
 import { listIntakeImages } from "@/lib/intake/images";
@@ -74,9 +75,16 @@ export default async function IntakeBookPage({ params }: Props) {
         ) : null}
       </section>
 
-      <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-        The push to the webshop arrives in the next slice.
-      </div>
+      <section className="space-y-3">
+        <h3 className="text-lg font-semibold">5. Push to webshop</h3>
+        <PushStep
+          sessionId={id}
+          bookId={bookId}
+          status={book.status}
+          reviewed={Boolean(book.reviewedTitle?.trim())}
+          pushError={book.pushError}
+        />
+      </section>
     </div>
   );
 }

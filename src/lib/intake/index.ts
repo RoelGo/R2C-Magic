@@ -39,6 +39,14 @@ export interface IntakeBookSummary {
   createdAt: Date;
 }
 
+/** Extended book view for the per-book screen (includes push + review state). */
+export interface IntakeBookDetail extends IntakeBookSummary {
+  reviewedTitle: string | null;
+  retailItemID: string | null;
+  pushError: string | null;
+  pushedAt: Date | null;
+}
+
 export interface IntakeSessionSummary {
   id: string;
   label: string | null;
@@ -123,7 +131,7 @@ export function addBookToSession(sessionId: string): string {
 }
 
 /** Fetch a single book within a session (for reopening its review form). */
-export function getIntakeBook(sessionId: string, bookId: string): IntakeBookSummary | undefined {
+export function getIntakeBook(sessionId: string, bookId: string): IntakeBookDetail | undefined {
   const db = getDb();
   return db
     .select({
@@ -132,6 +140,10 @@ export function getIntakeBook(sessionId: string, bookId: string): IntakeBookSumm
       title: intakeBooks.title,
       status: intakeBooks.status,
       createdAt: intakeBooks.createdAt,
+      reviewedTitle: intakeBooks.reviewedTitle,
+      retailItemID: intakeBooks.retailItemID,
+      pushError: intakeBooks.pushError,
+      pushedAt: intakeBooks.pushedAt,
     })
     .from(intakeBooks)
     .where(and(eq(intakeBooks.sessionId, sessionId), eq(intakeBooks.id, bookId)))

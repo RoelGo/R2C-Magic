@@ -1,8 +1,7 @@
 /**
- * Lightspeed Retail integration (spec v2 Slice F). This first slice covers the
- * OAuth connection only — obtaining, storing, and refreshing a Retail API
- * token. The actual product push (US-F1/F2/F3) builds on top of
- * `getValidAccessToken()` in a later slice.
+ * Lightspeed Retail integration (spec v2 Slice F). Covers the OAuth connection
+ * (obtain/store/refresh a Retail API token) and the product push (US-F1/F2):
+ * finding an item by EAN, updating its content, and uploading cover images.
  */
 export {
   disconnect,
@@ -20,3 +19,21 @@ export {
   createState,
   exchangeCodeForTokens,
 } from "./oauth";
+export {
+  RetailApiError,
+  findItemByEan,
+  retailBaseUrl,
+  updateItem,
+  uploadItemImage,
+  type ImageUpload,
+  type ItemUpdatePayload,
+  type RetailClient,
+  type RetailItem,
+} from "./api";
+export {
+  buildItemUpdate,
+  pushBookToRetail,
+  type PushImage,
+  type PushInput,
+  type PushResult,
+} from "./push";

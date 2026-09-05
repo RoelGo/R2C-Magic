@@ -2,6 +2,7 @@
 
 import { addBookToSession, createSession, setBookEan } from "@/lib/intake";
 import { startEnrichment } from "@/lib/intake/enrichment";
+import { submitIntakeBook } from "@/lib/intake/push";
 import { type SaveReviewInput, saveIntakeReview } from "@/lib/intake/review";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -84,5 +85,30 @@ export async function saveIntakeReviewAction(
       return { ok: false, error: err.issues[0]?.message ?? "Invalid review details" };
     }
     return { ok: false, error: err instanceof Error ? err.message : "Failed to save review" };
+  }
+}
+
+export type PushBookResult =
+  | { ok: true; itemID: string; imageCount: number }
+  | { ok: false; error: string };
+
+/**
+ * Server action: push a confirmed book to Lightspeed Retail (spec v2 Slice F,
+ * US-F1/F2/F3). Called from the client review UI, so it returns a result object
+ * (rather than throwing) to drive the confirmation / retry states. On success
+ * or failure the book + session views are revalidated so the status chip and
+ * any error message update.
+ */
+export async function pushIntakeBookAction(
+  sessionId: string,
+  bookId: string,
+): Promise<PushBookResult> {
+  try {
+    const result = await submitIntakeBook(sessionId, bookId);
+    revalidatePath(`/intake/${sessionId}/books/${bookId}`);
+    revalidatePath(`/intake/${sessionId}`);
+    return result;
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to push book" };
   }
 }

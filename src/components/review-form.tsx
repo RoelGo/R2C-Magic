@@ -150,7 +150,7 @@ export function ReviewForm({ sessionId, bookId, model }: ReviewFormProps) {
 
       {saved && !isPending && !error ? (
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
-          Review saved. The push to the webshop arrives in the next slice.
+          Review saved. Push it to the webshop in step 5.
         </p>
       ) : null}
 
