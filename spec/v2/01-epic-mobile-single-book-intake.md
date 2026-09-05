@@ -166,17 +166,27 @@ EAN/ISBN so I can still proceed.*
   checksum) before continuing; invalid input is flagged inline, not blocking
   after confirmation.
 
-#### SKIP! US-B3 — Resolve the book against R-Series / existing data (M)
+#### US-B3 — Resolve the book against R-Series / existing data (M)
 *As a worker, I want the system to recognise a scanned book that's already in
 retail so its known data is used and I don't create a duplicate.*
 
-- Once an EAN is captured, the system looks up whether the book is already
-  known (from prior v1 runs / R-Series data available to the app) and, if so,
-  pre-loads any known fields.
-- **Open question (see §7):** how the app accesses current R-Series article
-  data — reuse of prior imported data, an R-Series export, or a live retail
-  API lookup. Story is written against "known EAN → known article" without
-  binding the mechanism.
+- Once an EAN is captured, the system performs a **live Lightspeed Retail API
+  lookup** (`findItemByEan`) to determine whether the book already exists as a
+  retail Item, and records the outcome (`found` / `missing` / `error`) on the
+  intake book.
+- **Resolved (was open question §7.1):** the app now has Retail API access
+  (the Slice F OAuth connection), so US-B3 uses a live lookup rather than
+  reusing prior v1 DB data. The lookup is best-effort — a not-connected app or
+  API error is recorded as `error` and never blocks photography/OCR/review.
+- The lookup **gates submission** (see US-F1): `found` → submit updates the
+  existing Item; `missing` → submit is disabled unless the worker ticks a
+  **"create on submit"** checkbox (which creates a new Retail Item via
+  `createItem`); `error`/`checking` → submit is disabled until it resolves.
+
+> **Implemented.** `src/lib/intake/lookup.ts` (`lookupRetailItem`) is invoked
+> from `setBookEanAction` right after the EAN is saved; the result drives the
+> `PushStep` UI (`src/components/push-step.tsx`). The `retail_lookup_status` /
+> `retail_lookup_error` columns on `intake_books` persist it across reloads.
 
 ---
 
@@ -348,10 +358,13 @@ push an empty product.*
 > subscription, where products cannot be created/updated through the eCom API
 > (see the [omnichannel note](https://developers.lightspeedhq.com/ecom/introduction/omnichannel/)).
 > Slice F therefore targets the **Retail (R-Series) API** instead. The user
-> stories below are unchanged in intent; only the transport changes. Open
-> questions: not all intake metadata may be settable via the Retail API — most
-> fields are expected to go through Retail **imports**, and images through the
-> API (to be confirmed; we may need to pivot the field set again).
+> stories below are unchanged in intent; only the transport changes. **Field
+> settability (resolved):** intake content is settable via the Retail API —
+> title → `Item.description`, blurb → `ItemECommerce.longDescription`, weight →
+> `ItemECommerce.weight`, images via the Item Image endpoint. The `ItemECommerce`
+> fields flow through to the webshop on rokko's live omnichannel account
+> (verified), despite the docs flagging them as "not used by eCommerce". No
+> Retail **import** step is needed for these fields.
 >
 > **F0 — OAuth connection (done, this slice).** Before any push, the app
 > authorizes against the Retail account via the OAuth 2.0 authorization-code
@@ -369,9 +382,10 @@ push an empty product.*
 webshop so the book goes live without a CSV export.*
 
 - On submit, the app creates/updates the product via the Lightspeed **Retail**
-  API (Item + related endpoints) — or, where a field is not settable via the
-  API, stages it for a Retail **import** — with the confirmed title,
-  description, author, and weight.
+  API (Item + related endpoints) with the confirmed title, description, author,
+  and weight. Matching is by EAN (US-B3): a `found` item is **updated**
+  (`updateItem`); a `missing` item is **created** (`createItem`) when the worker
+  opts in via the "create on submit" checkbox, otherwise submit is blocked.
 - Reuses the v1 R→C field semantics where they still apply (mapping remains the
   source of truth for field shapes), adapted to the Retail payload instead of
   a CSV row.
@@ -460,7 +474,12 @@ Deferred decisions to surface rather than guess (extends
    data for a scanned EAN? Options: (a) reuse data from prior v1 imports,
    (b) a fresh R-Series export uploaded per session, (c) a live R-Series
    retail API lookup. Which is available at rokko?
-   - Just using data available in the db will suffice. No need to connect with R-series. 
+   - **Resolved: (c) live Retail API lookup.** The app now has Retail API
+     access (the Slice F OAuth connection), so US-B3 does a live
+     `findItemByEan` on EAN capture (`src/lib/intake/lookup.ts`) rather than
+     relying on DB data. A `missing` result lets the worker create the Item on
+     submit; a `found` result updates it. (The earlier "just use the DB" answer
+     is superseded now that the API is connected.)
 2. **OCR engine (US-D3/D4).** On-device `tesseract.js` (no data leaves the
    phone, weaker on stylised covers) vs. a cloud OCR API (better accuracy,
    cost + connectivity + credentials). Preference?

@@ -42,6 +42,8 @@ export interface IntakeBookSummary {
 /** Extended book view for the per-book screen (includes push + review state). */
 export interface IntakeBookDetail extends IntakeBookSummary {
   reviewedTitle: string | null;
+  retailLookupStatus: "idle" | "checking" | "found" | "missing" | "error";
+  retailLookupError: string | null;
   retailItemID: string | null;
   pushError: string | null;
   pushedAt: Date | null;
@@ -141,6 +143,8 @@ export function getIntakeBook(sessionId: string, bookId: string): IntakeBookDeta
       status: intakeBooks.status,
       createdAt: intakeBooks.createdAt,
       reviewedTitle: intakeBooks.reviewedTitle,
+      retailLookupStatus: intakeBooks.retailLookupStatus,
+      retailLookupError: intakeBooks.retailLookupError,
       retailItemID: intakeBooks.retailItemID,
       pushError: intakeBooks.pushError,
       pushedAt: intakeBooks.pushedAt,

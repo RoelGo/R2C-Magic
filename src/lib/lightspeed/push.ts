@@ -8,7 +8,10 @@
  *     a missing item is a recoverable failure, never a create.
  *   - author is out of scope here (it lives in CatalogVendorItem/Brand, already
  *     populated from vendor packing lists), so it is captured but not pushed.
- *   - description + weight are pushed best-effort via ItemECommerce ("API-only").
+ *   - description + weight are pushed via ItemECommerce, which is VERIFIED to
+ *     flow through to the webshop on rokko's live omnichannel account (despite
+ *     the docs flagging those fields as "not used by eCommerce"). See the note
+ *     on `ItemUpdatePayload.ItemECommerce` in `api.ts`.
  *
  * The mapping mirrors the v1 R→C semantics (mapping.config.json): title →
  * item name, weight grams → kg, EAN as the identifier.
@@ -18,6 +21,7 @@ import {
   type ItemUpdatePayload,
   RetailApiError,
   type RetailClient,
+  createItem,
   findItemByEan,
   updateItem,
   uploadItemImage,
@@ -61,10 +65,17 @@ export type PushResult =
 export interface PushInput {
   book: IntakeBookRow;
   images: PushImage[];
+  /**
+   * When the EAN is not found in Retail, create a brand-new Item instead of
+   * failing (US-B3 "create on submit"). Defaults to update-only per rokko's
+   * original Slice F decision — the worker must explicitly opt in.
+   */
+  createIfMissing?: boolean;
 }
 
 /**
- * Push a confirmed book to Retail: find the Item by EAN, PUT its content, then
+ * Push a confirmed book to Retail: find the Item by EAN, PUT its content (or,
+ * when `createIfMissing` is set and no item matches, POST a new one), then
  * upload cover photos (front = ordering 0, back = ordering 1). The content push
  * and image push are independently recoverable — an image failure does not undo
  * the item update (US-F2). Never throws for expected failures; returns a
@@ -74,29 +85,35 @@ export async function pushBookToRetail(
   client: RetailClient,
   input: PushInput,
 ): Promise<PushResult> {
-  const { book, images } = input;
+  const { book, images, createIfMissing = false } = input;
 
   if (!book.ean) {
     return { ok: false, error: "Book has no EAN to match against Retail.", recoverable: true };
   }
 
+  const payload = buildItemUpdate(book);
+
   let itemID: string;
   try {
     const item = await findItemByEan(client, book.ean);
-    if (!item) {
+    if (item) {
+      itemID = item.itemID;
+      try {
+        await updateItem(client, itemID, payload);
+      } catch (err) {
+        return { ok: false, error: describeError(err), recoverable: true };
+      }
+    } else if (createIfMissing) {
+      // US-B3: the book isn't in Retail yet and the worker opted to create it.
+      const created = await createItem(client, { ...payload, ean: book.ean });
+      itemID = created.itemID;
+    } else {
       return {
         ok: false,
-        error: `No Retail item found for EAN ${book.ean}. Upload it to R-Series first.`,
+        error: `No Retail item found for EAN ${book.ean}. Upload it to R-Series first, or enable "create on submit".`,
         recoverable: true,
       };
     }
-    itemID = item.itemID;
-  } catch (err) {
-    return { ok: false, error: describeError(err), recoverable: true };
-  }
-
-  try {
-    await updateItem(client, itemID, buildItemUpdate(book));
   } catch (err) {
     return { ok: false, error: describeError(err), recoverable: true };
   }

@@ -83,6 +83,8 @@ export default async function IntakeBookPage({ params }: Props) {
           status={book.status}
           reviewed={Boolean(book.reviewedTitle?.trim())}
           pushError={book.pushError}
+          retailLookupStatus={book.retailLookupStatus}
+          retailLookupError={book.retailLookupError}
         />
       </section>
     </div>

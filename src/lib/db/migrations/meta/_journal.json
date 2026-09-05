@@ -71,6 +71,13 @@
       "when": 1781094700000,
       "tag": "0009_intake_push_state",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1781094800000,
+      "tag": "0010_intake_retail_lookup",
+      "breakpoints": true
     }
   ]
 }

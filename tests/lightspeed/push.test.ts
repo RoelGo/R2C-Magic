@@ -15,15 +15,22 @@ vi.mock("../../src/lib/lightspeed/api", async () => {
   return {
     ...actual,
     findItemByEan: vi.fn(),
+    createItem: vi.fn(),
     updateItem: vi.fn(),
     uploadItemImage: vi.fn(),
   };
 });
 
-import { findItemByEan, updateItem, uploadItemImage } from "../../src/lib/lightspeed/api";
+import {
+  createItem,
+  findItemByEan,
+  updateItem,
+  uploadItemImage,
+} from "../../src/lib/lightspeed/api";
 import { buildItemUpdate, pushBookToRetail } from "../../src/lib/lightspeed/push";
 
 const findItemByEanMock = vi.mocked(findItemByEan);
+const createItemMock = vi.mocked(createItem);
 const updateItemMock = vi.mocked(updateItem);
 const uploadItemImageMock = vi.mocked(uploadItemImage);
 
@@ -133,12 +140,47 @@ describe("pushBookToRetail", () => {
     });
   });
 
-  it("is update-only: a missing item is a recoverable failure, no create", async () => {
+  it("is update-only by default: a missing item is a recoverable failure, no create", async () => {
     findItemByEanMock.mockResolvedValue(undefined);
     const result = await pushBookToRetail(client, { book: book(), images: [front] });
     expect(result).toMatchObject({ ok: false, recoverable: true });
     if (!result.ok) expect(result.error).toMatch(/No Retail item found/);
     expect(updateItemMock).not.toHaveBeenCalled();
+    expect(createItemMock).not.toHaveBeenCalled();
+  });
+
+  it("creates the item when missing and createIfMissing is set (US-B3)", async () => {
+    findItemByEanMock.mockResolvedValue(undefined);
+    createItemMock.mockResolvedValue({ itemID: "77" });
+    uploadItemImageMock.mockResolvedValueOnce({ imageID: "1" });
+
+    const result = await pushBookToRetail(client, {
+      book: book(),
+      images: [front],
+      createIfMissing: true,
+    });
+    expect(result).toEqual({ ok: true, itemID: "77", imageIDs: ["1"] });
+    expect(createItemMock).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({ ean: "9780198728795", description: "Utilitarianism" }),
+    );
+    expect(updateItemMock).not.toHaveBeenCalled();
+    // The new item still gets its cover uploaded.
+    expect(uploadItemImageMock).toHaveBeenCalledOnce();
+  });
+
+  it("updates (not creates) when the item exists even if createIfMissing is set", async () => {
+    findItemByEanMock.mockResolvedValue({ itemID: "42" });
+    updateItemMock.mockResolvedValue({ itemID: "42" });
+
+    const result = await pushBookToRetail(client, {
+      book: book(),
+      images: [],
+      createIfMissing: true,
+    });
+    expect(result).toMatchObject({ ok: true, itemID: "42" });
+    expect(updateItemMock).toHaveBeenCalledOnce();
+    expect(createItemMock).not.toHaveBeenCalled();
   });
 
   it("fails recoverably when the book has no EAN", async () => {

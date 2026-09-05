@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   RetailApiError,
   type RetailClient,
+  createItem,
   findItemByEan,
   retailBaseUrl,
   updateItem,
@@ -66,6 +67,28 @@ describe("lib/lightspeed/api", () => {
     expect(url).toBe("https://api.lightspeedapp.com/API/V3/Account/314551/Item/42.json");
     expect(init.method).toBe("PUT");
     expect(JSON.parse(init.body as string)).toEqual({ description: "New" });
+  });
+
+  it("POST-creates an item with the EAN identifier and default type", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ Item: { itemID: 77, description: "New book", ean: "9780198728795" } }),
+    );
+    const created = await createItem(client, {
+      ean: "9780198728795",
+      description: "New book",
+      ItemECommerce: { longDescription: "Blurb." },
+    });
+    expect(created.itemID).toBe("77");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("https://api.lightspeedapp.com/API/V3/Account/314551/Item.json");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({
+      itemType: "default",
+      ean: "9780198728795",
+      description: "New book",
+      ItemECommerce: { longDescription: "Blurb." },
+    });
   });
 
   it("uploads an image as multipart with data + image parts", async () => {

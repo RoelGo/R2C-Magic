@@ -21,10 +21,12 @@ export {
 } from "./oauth";
 export {
   RetailApiError,
+  createItem,
   findItemByEan,
   retailBaseUrl,
   updateItem,
   uploadItemImage,
+  type CreateItemPayload,
   type ImageUpload,
   type ItemUpdatePayload,
   type RetailClient,

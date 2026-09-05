@@ -213,6 +213,25 @@ export const intakeBooks = sqliteTable("intake_books", {
    *    while `draft`/`pushed`; set alongside `status = "failed"`.
    *  - `pushedAt`      — when the book last pushed successfully (null until then).
    */
+  /**
+   * Live Retail lookup by EAN (spec v2 US-B3), run the moment an EAN is
+   * captured. Independent of the push `status`. Tells the review/push UI
+   * whether the scanned book already exists as a Retail Item so submit can be
+   * gated (found → update; not found → blocked unless the worker opts to
+   * create it).
+   *  - `idle`     — no EAN captured yet
+   *  - `checking` — a lookup is in flight
+   *  - `found`    — a matching Retail Item exists (`retailItemID` set)
+   *  - `missing`  — the EAN is not in Retail (worker may opt to create)
+   *  - `error`    — the lookup could not complete (not connected / API error)
+   */
+  retailLookupStatus: text("retail_lookup_status", {
+    enum: ["idle", "checking", "found", "missing", "error"],
+  })
+    .notNull()
+    .default("idle"),
+  /** Last lookup failure message (set with `retailLookupStatus = "error"`). */
+  retailLookupError: text("retail_lookup_error"),
   retailItemID: text("retail_item_id"),
   pushError: text("push_error"),
   pushedAt: integer("pushed_at", { mode: "timestamp_ms" }),

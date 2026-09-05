@@ -141,9 +141,12 @@ export interface ItemUpdatePayload {
   /** The item's display name (title). Maps to `Item.description`. */
   description?: string;
   /**
-   * eCommerce content sub-object. Per the docs these fields are flagged as
-   * "not used by Lightspeed eCommerce"; we send them best-effort (rokko's
-   * "API-only" choice) and verify against the live account.
+   * eCommerce content sub-object. The Retail docs flag these fields as "not
+   * used by Lightspeed eCommerce", but this was VERIFIED against rokko's live
+   * omnichannel account: setting `longDescription` + `weight` via the Retail
+   * API does flow through to the webshop product. So this is the correct,
+   * confirmed transport for intake blurb + weight — do not second-guess it or
+   * route these fields through a Retail import instead.
    */
   ItemECommerce?: {
     longDescription?: string;
@@ -162,6 +165,32 @@ export async function updateItem(
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+  return itemMutationResponseSchema.parse(json).Item;
+}
+
+/** Fields we set when creating a brand-new Item (US-B3 create-on-submit). */
+export interface CreateItemPayload extends ItemUpdatePayload {
+  /** The book's EAN — set as the new Item's identifier so re-scans match it. */
+  ean: string;
+}
+
+/**
+ * POST-create a new Item for a book that does not yet exist in Retail. Used
+ * only when the worker opts in via the "create on submit" checkbox (US-B3);
+ * the default push flow remains update-only (matched by EAN). Returns the
+ * newly created Item (with its `itemID`).
+ */
+export async function createItem(
+  client: RetailClient,
+  payload: CreateItemPayload,
+): Promise<RetailItem> {
+  const json = await retailFetch(client, "/Item.json", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    // `itemType: "default"` mirrors a plain retail article (as opposed to a
+    // matrix/box item) — required by the create endpoint.
+    body: JSON.stringify({ itemType: "default", ...payload }),
   });
   return itemMutationResponseSchema.parse(json).Item;
 }

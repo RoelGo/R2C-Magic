@@ -32,6 +32,7 @@ export type SubmitBookResult =
 export async function submitIntakeBook(
   sessionId: string,
   bookId: string,
+  options: { createIfMissing?: boolean } = {},
 ): Promise<SubmitBookResult> {
   const db = getDb();
   const book = db
@@ -75,7 +76,10 @@ export async function submitIntakeBook(
     }
   }
 
-  const result = await pushBookToRetail({ accessToken, accountId }, { book, images });
+  const result = await pushBookToRetail(
+    { accessToken, accountId },
+    { book, images, createIfMissing: options.createIfMissing ?? false },
+  );
 
   if (!result.ok) {
     logger.warn({ sessionId, bookId, ean: book.ean, error: result.error }, "intake push failed");

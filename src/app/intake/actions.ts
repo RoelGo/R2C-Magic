@@ -2,6 +2,7 @@
 
 import { addBookToSession, createSession, setBookEan } from "@/lib/intake";
 import { startEnrichment } from "@/lib/intake/enrichment";
+import { type RetailLookupResult, lookupRetailItem } from "@/lib/intake/lookup";
 import { submitIntakeBook } from "@/lib/intake/push";
 import { type SaveReviewInput, saveIntakeReview } from "@/lib/intake/review";
 import { revalidatePath } from "next/cache";
@@ -35,13 +36,22 @@ export async function addIntakeBookAction(formData: FormData): Promise<void> {
   redirect(`/intake/${sessionId}/books/${bookId}`);
 }
 
-export type SetBookEanResult = { ok: true; ean: string } | { ok: false; error: string };
+export type SetBookEanResult =
+  | { ok: true; ean: string; lookup: RetailLookupResult }
+  | { ok: false; error: string };
 
 /**
  * Server action: validate and persist a scanned/typed EAN onto a book
  * (spec v2 US-B1/US-B2). Called from the client capture component, so it
  * returns a result object (rather than throwing) to drive inline validation
  * messages. A successful capture revalidates the book + session views.
+ *
+ * On capture it also (a) kicks off background online enrichment (US-C1) and
+ * (b) resolves the book against the Lightspeed Retail API (US-B3) so the UI
+ * knows whether it already exists — gating submit (found → update; missing →
+ * create-on-submit only). The Retail lookup is awaited (a single fast call) so
+ * its result is available immediately; a not-connected/API error is reported
+ * on the lookup result and never fails the capture.
  */
 export async function setBookEanAction(
   sessionId: string,
@@ -53,9 +63,12 @@ export async function setBookEanAction(
     // Kick off background online enrichment immediately (US-C1). Non-blocking:
     // the worker moves on to photos while sources are queried.
     startEnrichment(sessionId, bookId, ean);
+    // Resolve against Retail (US-B3). Best-effort: never throws for expected
+    // failures — records `error` and lets the rest of the flow proceed.
+    const lookup = await lookupRetailItem(sessionId, bookId, ean);
     revalidatePath(`/intake/${sessionId}/books/${bookId}`);
     revalidatePath(`/intake/${sessionId}`);
-    return { ok: true, ean };
+    return { ok: true, ean, lookup };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to save EAN" };
   }
@@ -102,9 +115,10 @@ export type PushBookResult =
 export async function pushIntakeBookAction(
   sessionId: string,
   bookId: string,
+  options: { createIfMissing?: boolean } = {},
 ): Promise<PushBookResult> {
   try {
-    const result = await submitIntakeBook(sessionId, bookId);
+    const result = await submitIntakeBook(sessionId, bookId, options);
     revalidatePath(`/intake/${sessionId}/books/${bookId}`);
     revalidatePath(`/intake/${sessionId}`);
     return result;
