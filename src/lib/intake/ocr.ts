@@ -8,7 +8,7 @@
  * and the flow degrades to manual entry (US-G2) — OCR never aborts the session
  * (AGENTS.md rule #6).
  *
- * The engine is a swappable subprocess adapter (`ocrs` / `pp-ocrv6`), selected
+ * The engine is a swappable subprocess adapter (`pp-ocrv6`), selected
  * by config; tests inject a stub so the unit suite needs no binary or model.
  */
 import { getDb } from "@/lib/db/client";

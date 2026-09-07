@@ -6,11 +6,9 @@
 import { config } from "@/lib/config";
 import { logger } from "@/lib/logger";
 import type { OcrEngine, OcrEngineId } from "./engine";
-import { ocrsEngine } from "./engines/ocrs";
 import { ppOcrEngine } from "./engines/pp-ocr";
 
 const ENGINES: Record<OcrEngineId, OcrEngine> = {
-  ocrs: ocrsEngine,
   "pp-ocrv6": ppOcrEngine,
 };
 

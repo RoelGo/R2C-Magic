@@ -1,17 +1,16 @@
 /**
  * OCR engine abstraction (spec v2 US-D3/D4).
  *
- * Both supported engines run as subprocesses behind this one interface so they
- * are swappable by config (`OCR_ENGINE`) and benchmarkable against each other:
+ * The engine runs as a subprocess behind this one interface so it stays
+ * swappable by config (`OCR_ENGINE`):
  *
- *  - `ocrs`     — Robert Knight's Rust OCR CLI (https://github.com/robertknight/ocrs)
  *  - `pp-ocrv6` — PaddlePaddle PP-OCRv6 via a committed Python script
  *
  * An engine's only job is image → recognised text lines. All title/author/
  * description extraction and cleanup lives in the pure `extract.ts` module, so
  * this layer stays a thin, testable process boundary.
  */
-export type OcrEngineId = "ocrs" | "pp-ocrv6";
+export type OcrEngineId = "pp-ocrv6";
 
 /**
  * Axis-aligned bounding box of a recognised text line, in source-image pixels.

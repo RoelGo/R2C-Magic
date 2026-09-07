@@ -11,7 +11,7 @@ function fakeJpeg(size = 64): Uint8Array {
 
 /** A stub engine returning canned lines per call, so no binary/model is used. */
 function stubEngine(recognize: OcrEngine["recognize"]): OcrEngine {
-  return { id: "ocrs", recognize };
+  return { id: "pp-ocrv6", recognize };
 }
 
 describe("lib/intake/ocr", () => {
@@ -53,7 +53,7 @@ describe("lib/intake/ocr", () => {
 
     const snap = getOcrSnapshot(sessionId, bookId);
     expect(snap?.status).toBe("done");
-    expect(snap?.engine).toBe("ocrs");
+    expect(snap?.engine).toBe("pp-ocrv6");
     expect(snap?.suggestions.title).toBe("De Ontdekking");
     expect(snap?.suggestions.author).toBe("Jan Jansen");
   });
@@ -89,7 +89,7 @@ describe("lib/intake/ocr", () => {
     const { runOcr, getOcrSnapshot } = await import("../../src/lib/intake/ocr");
 
     const engine = stubEngine(async () => {
-      throw new Error("OCR binary not found: ocrs");
+      throw new Error("OCR binary not found: pp-ocrv6");
     });
 
     const errors = await runOcr(sessionId, bookId, engine);

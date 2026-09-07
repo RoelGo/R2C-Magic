@@ -8,19 +8,19 @@ import { getOcrEngine } from "../../src/lib/ocr/index";
 /**
  * Engine integration tests (opt-in: `pnpm test:lib:integration`).
  *
- * These exercise the REAL OCR engines against a sample cover image to validate
- * the subprocess wiring — binary discovery, argument passing, output parsing —
- * end to end. They are intentionally excluded from the default unit run
- * because they need the engines installed and are slow (model load).
+ * These exercise the REAL OCR engine (PP-OCRv6) against a sample cover image to
+ * validate the subprocess wiring — binary discovery, argument passing, output
+ * parsing — end to end. They are intentionally excluded from the default unit
+ * run because they need the engine installed and are slow (model load).
  *
- * Each engine's block is skipped unless BOTH are true:
+ * The block is skipped unless BOTH are true:
  *   1. a sample image exists at tests/integration/__fixtures__/cover.jpg
  *      (drop in any book cover photo with legible text), and
  *   2. the engine's runtime is available on this machine.
  *
  * The assertion is deliberately loose (we get *some* text back) so the test
  * validates connectivity without pinning exact recognition output, which
- * varies by engine and model version.
+ * varies by model version.
  */
 const FIXTURE = join(import.meta.dirname, "__fixtures__", "cover.jpg");
 const hasFixture = existsSync(FIXTURE);
@@ -37,12 +37,10 @@ function commandAvailable(cmd: string, args: string[]): boolean {
   }
 }
 
-// Honour the same env the engine adapters use, so a virtualenv Python
+// Honour the same env the engine adapter uses, so a virtualenv Python
 // (PP_OCR_PYTHON=.venv-ocr/bin/python) is detected rather than the system one.
 const ppPython = process.env.PP_OCR_PYTHON ?? "python3";
-const ocrsBin = process.env.OCRS_BIN ?? "ocrs";
 
-const ocrsAvailable = commandAvailable(ocrsBin, ["--help"]);
 const ppAvailable =
   commandAvailable(ppPython, ["-c", "import paddleocr"]) &&
   existsSync(join(process.cwd(), "scripts", "pp_ocr.py"));
@@ -54,7 +52,7 @@ async function expectSomeText(id: OcrEngineId) {
   expect(Array.isArray(result.lines)).toBe(true);
   await expect(JSON.stringify(result, null, 2)).toMatchFileSnapshot(`ocr-result-${id}.json`);
   expect(result.text.length).toBeGreaterThan(0);
-  // US-D5: engines now expose per-line geometry so the extractor can pick the
+  // US-D5: the engine exposes per-line geometry so the extractor can pick the
   // title by text size. Assert it's present and box-shaped when non-empty.
   expect(Array.isArray(result.linesWithGeometry)).toBe(true);
   if (result.linesWithGeometry && result.linesWithGeometry.length > 0) {
@@ -67,12 +65,6 @@ async function expectSomeText(id: OcrEngineId) {
   }
 }
 
-describe.skipIf(!hasFixture || !ocrsAvailable)("ocr integration — ocrs", () => {
-  it("reads text from the sample cover", async () => {
-    await expectSomeText("ocrs");
-  });
-});
-
 describe.skipIf(!hasFixture || !ppAvailable)("ocr integration — pp-ocrv6", () => {
   it("reads text from the sample cover", async () => {
     await expectSomeText("pp-ocrv6");
@@ -81,12 +73,11 @@ describe.skipIf(!hasFixture || !ppAvailable)("ocr integration — pp-ocrv6", () 
 
 // Guarantee the integration project always has at least one executed test, so
 // `vitest run --project integration` doesn't exit non-zero on "no tests" when
-// the engines/fixture are absent in CI.
+// the engine/fixture are absent in CI.
 describe("ocr integration — availability report", () => {
-  it("reports which engines/fixtures are present", () => {
+  it("reports which engine/fixtures are present", () => {
     // Not an assertion on the environment; just surfaces the skip reasons.
     expect(typeof hasFixture).toBe("boolean");
-    expect(typeof ocrsAvailable).toBe("boolean");
     expect(typeof ppAvailable).toBe("boolean");
   });
 });

@@ -129,9 +129,8 @@ relevant:
 | `INCLUDE_ERROR_COLUMN` | `true` | Append the per-row error column to exports |
 | `ERROR_COLUMN_NAME` | `_enrichment_errors` | Name of that column |
 | `OCR_ENABLED` | `false` | Master switch for server-side cover OCR |
-| `OCR_ENGINE` | `pp-ocrv6` | Which OCR engine: `ocrs`, `pp-ocrv6`, or `none` |
+| `OCR_ENGINE` | `pp-ocrv6` | Which OCR engine: `pp-ocrv6` or `none` |
 | `OCR_TIMEOUT_MS` | `30000` | Per-image OCR subprocess timeout |
-| `OCRS_BIN` | `ocrs` | Path to the `ocrs` CLI binary |
 | `PP_OCR_PYTHON` | `python3` | Python interpreter for the PP-OCRv6 script |
 | `PP_OCR_SCRIPT` | `scripts/pp_ocr.py` | PP-OCRv6 runner script |
 | `PP_OCR_MODEL_SIZE` | `tiny` | PP-OCRv6 variant: `tiny`, `small`, or `medium` |
@@ -187,17 +186,9 @@ unaffected.
 Cover photos are OCR'd **server-side** to pre-fill the title (front cover) and
 description (back cover). OCR is **off by default** (`OCR_ENABLED=false`); the
 photo flow still works and simply skips the suggestion. When enabled, the
-default engine is **`pp-ocrv6`** (accurate and, with the `tiny` model, fast).
-Two subprocess engines sit behind one interface (`src/lib/ocr/`) so they can be
-benchmarked by switching `OCR_ENGINE`:
-
-- **`ocrs`** — [robertknight/ocrs](https://github.com/robertknight/ocrs), a
-  Rust OCR CLI (Latin script). Install with Cargo; it downloads its models to
-  `~/.cache/ocrs` on first run:
-
-  ```sh
-  cargo install ocrs-cli --locked
-  ```
+engine is **`pp-ocrv6`** (accurate and, with the `tiny` model, fast). It sits
+behind a small interface (`src/lib/ocr/`) so another engine could be added
+later by switching `OCR_ENGINE`:
 
 - **`pp-ocrv6`** — PaddlePaddle PP-OCRv6 via `scripts/pp_ocr.py`, which prints
   `{"lines": [...]}`. It needs PaddleOCR **3.x**. A Homebrew/system Python may
@@ -214,37 +205,33 @@ benchmarked by switching `OCR_ENGINE`:
   PP_OCR_PYTHON=.venv-ocr/bin/python OCR_ENABLED=true OCR_ENGINE=pp-ocrv6 pnpm dev
   ```
 
-Validate either engine end-to-end against the committed sample cover
+Validate the engine end-to-end against the committed sample cover
 (`tests/integration/__fixtures__/cover.jpg`):
 
 ```sh
-pnpm test:lib:integration                          # ocrs only
 PP_OCR_PYTHON=.venv-ocr/bin/python \
-  OCR_TIMEOUT_MS=120000 pnpm test:lib:integration  # both engines
+  OCR_TIMEOUT_MS=120000 pnpm test:lib:integration
 ```
 
-The default `pnpm test` never touches these engines — OCR is exercised with a
+The default `pnpm test` never touches the engine — OCR is exercised with a
 stub, keeping the unit suite hermetic.
 
 ### Accuracy vs. speed (benchmark)
 
-On the sample cover, **PP-OCRv6 is far more accurate** than `ocrs` (clean,
-correctly-spelled lines vs. heavily garbled text). PP-OCRv6 ships in three
-sizes (`PP_OCR_MODEL_SIZE`); each reloads its models per invocation, so size
-drives the cold-start cost:
+PP-OCRv6 ships in three sizes (`PP_OCR_MODEL_SIZE`); each reloads its models per
+invocation, so size drives the cold-start cost:
 
-| Engine / model | Time per photo | Accuracy on sample cover |
+| Model | Time per photo | Accuracy on sample cover |
 |---|---|---|
-| `ocrs` | ~0.5s | Poor — heavily garbled |
-| `pp-ocrv6` `tiny` (default) | ~6s | Excellent — a few micro-typos |
-| `pp-ocrv6` `small` | ~12s | Excellent |
-| `pp-ocrv6` `medium` | ~49s | Best |
+| `tiny` (default) | ~6s | Excellent — a few micro-typos |
+| `small` | ~12s | Excellent |
+| `medium` | ~49s | Best |
 
-`tiny` is the PP-OCRv6 default: nearly as accurate as `medium` once cleaned up
+`tiny` is the default: nearly as accurate as `medium` once cleaned up
 and human-reviewed, but ~8x faster and comfortably inside `OCR_TIMEOUT_MS`. Use
 `medium` only when maximum accuracy justifies the latency. The committed
-snapshots (`tests/integration/ocr-result-*.json`) capture each engine's exact
-output for comparison. Eliminating PP-OCRv6's per-photo cold start entirely
+snapshot (`tests/integration/ocr-result-pp-ocrv6.json`) captures the engine's
+exact output. Eliminating PP-OCRv6's per-photo cold start entirely
 (e.g. a warm, long-lived worker process) is tracked as a separate story — see
 the roadmap.
 
