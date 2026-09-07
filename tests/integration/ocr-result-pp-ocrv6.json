@@ -1,7 +1,8 @@
 {
   "lines": [
     "Utilitarianism is thě most important and influential secular ethic",
-    "of modern times, but also the most controversial, becauseit",
+    "of modern times, but also the most controversial,",
+    "because it",
     "seems to undermine conventional moral views.",
     "This Very Short Introduction provides an authoritative",
     "account of the origins of utilitarianism, the main objections",
@@ -13,7 +14,7 @@
     "the University of Lodz, and co-author, with Peter Singer,",
     "of The Point of View of the Universe: Sidgwick and",
     "Contemporary Ethics (2016).",
-    "Peter Singer is the lra W. DeCamp Professor of Bioethics",
+    "Peter Singer is the Ira W. DeCamp Professor of Bioethics",
     "at Princeton University and author of Practical Ethics",
     "(3rd edn, 2011) and Ethics in the Real World (2016),",
     "among other books.",
@@ -22,9 +23,245 @@
     "ISBN 978-0-19-872879-5",
     "OXFORD",
     "UNIVERSITY PRESS",
-    "780198728795",
+    "9780198728795",
     "www.oup.com/",
-    "www.oup.cO"
+    "www.oup.co"
   ],
-  "text": "Utilitarianism is thě most important and influential secular ethic\nof modern times, but also the most controversial, becauseit\nseems to undermine conventional moral views.\nThis Very Short Introduction provides an authoritative\naccount of the origins of utilitarianism, the main objections\nto it, and how it can be justified and defended. Utilitarianism\nremains a force for new thinking on contemporary ethical\nchallenges like global poverty, the treatment of animals,\nthe right to die, and climate change.\nKatarzyna de Lazari-Radek is an assistant professor at\nthe University of Lodz, and co-author, with Peter Singer,\nof The Point of View of the Universe: Sidgwick and\nContemporary Ethics (2016).\nPeter Singer is the lra W. DeCamp Professor of Bioethics\nat Princeton University and author of Practical Ethics\n(3rd edn, 2011) and Ethics in the Real World (2016),\namong other books.\nVERY SHORT INTRODUCTIONS\nBrilliant. Sharp. Inspiring.\nISBN 978-0-19-872879-5\nOXFORD\nUNIVERSITY PRESS\n780198728795\nwww.oup.com/\nwww.oup.cO"
+  "linesWithGeometry": [
+    {
+      "text": "Utilitarianism is thě most important and influential secular ethic",
+      "box": {
+        "x": 506,
+        "y": 500,
+        "width": 1896,
+        "height": 134
+      }
+    },
+    {
+      "text": "of modern times, but also the most controversial,",
+      "box": {
+        "x": 519,
+        "y": 613,
+        "width": 1502,
+        "height": 97
+      }
+    },
+    {
+      "text": "because it",
+      "box": {
+        "x": 1989,
+        "y": 607,
+        "width": 345,
+        "height": 79
+      }
+    },
+    {
+      "text": "seems to undermine conventional moral views.",
+      "box": {
+        "x": 520,
+        "y": 707,
+        "width": 1412,
+        "height": 95
+      }
+    },
+    {
+      "text": "This Very Short Introduction provides an authoritative",
+      "box": {
+        "x": 523,
+        "y": 842,
+        "width": 1655,
+        "height": 104
+      }
+    },
+    {
+      "text": "account of the origins of utilitarianism, the main objections",
+      "box": {
+        "x": 524,
+        "y": 929,
+        "width": 1811,
+        "height": 111
+      }
+    },
+    {
+      "text": "to it, and how it can be justified and defended. Utilitarianism",
+      "box": {
+        "x": 526,
+        "y": 1018,
+        "width": 1862,
+        "height": 114
+      }
+    },
+    {
+      "text": "remains a force for new thinking on contemporary ethical",
+      "box": {
+        "x": 525,
+        "y": 1107,
+        "width": 1777,
+        "height": 120
+      }
+    },
+    {
+      "text": "challenges like global poverty, the treatment of animals,",
+      "box": {
+        "x": 529,
+        "y": 1200,
+        "width": 1708,
+        "height": 118
+      }
+    },
+    {
+      "text": "the right to die, and climate change.",
+      "box": {
+        "x": 538,
+        "y": 1310,
+        "width": 1110,
+        "height": 86
+      }
+    },
+    {
+      "text": "Katarzyna de Lazari-Radek is an assistant professor at",
+      "box": {
+        "x": 537,
+        "y": 1434,
+        "width": 1748,
+        "height": 107
+      }
+    },
+    {
+      "text": "the University of Lodz, and co-author, with Peter Singer,",
+      "box": {
+        "x": 541,
+        "y": 1527,
+        "width": 1715,
+        "height": 100
+      }
+    },
+    {
+      "text": "of The Point of View of the Universe: Sidgwick and",
+      "box": {
+        "x": 544,
+        "y": 1617,
+        "width": 1554,
+        "height": 99
+      }
+    },
+    {
+      "text": "Contemporary Ethics (2016).",
+      "box": {
+        "x": 550,
+        "y": 1713,
+        "width": 873,
+        "height": 91
+      }
+    },
+    {
+      "text": "Peter Singer is the Ira W. DeCamp Professor of Bioethics",
+      "box": {
+        "x": 552,
+        "y": 1842,
+        "width": 1768,
+        "height": 99
+      }
+    },
+    {
+      "text": "at Princeton University and author of Practical Ethics",
+      "box": {
+        "x": 559,
+        "y": 1933,
+        "width": 1600,
+        "height": 91
+      }
+    },
+    {
+      "text": "(3rd edn, 2011) and Ethics in the Real World (2016),",
+      "box": {
+        "x": 562,
+        "y": 2018,
+        "width": 1561,
+        "height": 96
+      }
+    },
+    {
+      "text": "among other books.",
+      "box": {
+        "x": 564,
+        "y": 2112,
+        "width": 624,
+        "height": 88
+      }
+    },
+    {
+      "text": "VERY SHORT INTRODUCTIONS",
+      "box": {
+        "x": 576,
+        "y": 2667,
+        "width": 1134,
+        "height": 104
+      }
+    },
+    {
+      "text": "Brilliant. Sharp. Inspiring.",
+      "box": {
+        "x": 586,
+        "y": 2769,
+        "width": 798,
+        "height": 90
+      }
+    },
+    {
+      "text": "ISBN 978-0-19-872879-5",
+      "box": {
+        "x": 1604,
+        "y": 3130,
+        "width": 718,
+        "height": 73
+      }
+    },
+    {
+      "text": "OXFORD",
+      "box": {
+        "x": 797,
+        "y": 3186,
+        "width": 544,
+        "height": 115
+      }
+    },
+    {
+      "text": "UNIVERSITY PRESS",
+      "box": {
+        "x": 812,
+        "y": 3289,
+        "width": 515,
+        "height": 56
+      }
+    },
+    {
+      "text": "9780198728795",
+      "box": {
+        "x": 1597,
+        "y": 3384,
+        "width": 671,
+        "height": 106
+      }
+    },
+    {
+      "text": "www.oup.com/",
+      "box": {
+        "x": 601,
+        "y": 3436,
+        "width": 420,
+        "height": 88
+      }
+    },
+    {
+      "text": "www.oup.co",
+      "box": {
+        "x": 605,
+        "y": 3510,
+        "width": 337,
+        "height": 70
+      }
+    }
+  ],
+  "text": "Utilitarianism is thě most important and influential secular ethic\nof modern times, but also the most controversial,\nbecause it\nseems to undermine conventional moral views.\nThis Very Short Introduction provides an authoritative\naccount of the origins of utilitarianism, the main objections\nto it, and how it can be justified and defended. Utilitarianism\nremains a force for new thinking on contemporary ethical\nchallenges like global poverty, the treatment of animals,\nthe right to die, and climate change.\nKatarzyna de Lazari-Radek is an assistant professor at\nthe University of Lodz, and co-author, with Peter Singer,\nof The Point of View of the Universe: Sidgwick and\nContemporary Ethics (2016).\nPeter Singer is the Ira W. DeCamp Professor of Bioethics\nat Princeton University and author of Practical Ethics\n(3rd edn, 2011) and Ethics in the Real World (2016),\namong other books.\nVERY SHORT INTRODUCTIONS\nBrilliant. Sharp. Inspiring.\nISBN 978-0-19-872879-5\nOXFORD\nUNIVERSITY PRESS\n9780198728795\nwww.oup.com/\nwww.oup.co"
 }

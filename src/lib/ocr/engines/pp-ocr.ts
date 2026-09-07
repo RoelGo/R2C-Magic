@@ -13,11 +13,24 @@
 import { config } from "@/lib/config";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
-import type { OcrEngine, OcrResult } from "../engine";
+import type { OcrEngine, OcrLine, OcrResult } from "../engine";
 import { runSubprocess } from "../subprocess";
 
+/**
+ * The script emits one line per recognised text. For backward compatibility we
+ * accept both the legacy plain-string form and the richer object form that
+ * carries an optional `box` ([x, y, width, height]) for the US-D5 heuristic.
+ */
+const lineSchema = z.union([
+  z.string(),
+  z.object({
+    text: z.string(),
+    box: z.tuple([z.number(), z.number(), z.number(), z.number()]).optional(),
+  }),
+]);
+
 const scriptOutputSchema = z.object({
-  lines: z.array(z.string()),
+  lines: z.array(lineSchema),
 });
 
 export const ppOcrEngine: OcrEngine = {
@@ -63,8 +76,25 @@ export const ppOcrEngine: OcrEngine = {
       throw new Error("PP-OCRv6 script JSON did not match the expected shape");
     }
 
-    const lines = result.data.lines.map((l) => l.trim()).filter((l) => l.length > 0);
+    const linesWithGeometry: OcrLine[] = [];
+    for (const raw of result.data.lines) {
+      if (typeof raw === "string") {
+        const text = raw.trim();
+        if (text.length > 0) linesWithGeometry.push({ text });
+        continue;
+      }
+      const text = raw.text.trim();
+      if (text.length === 0) continue;
+      if (raw.box) {
+        const [x, y, width, height] = raw.box;
+        linesWithGeometry.push({ text, box: { x, y, width, height } });
+      } else {
+        linesWithGeometry.push({ text });
+      }
+    }
+
+    const lines = linesWithGeometry.map((l) => l.text);
     logger.debug({ lineCount: lines.length }, "pp-ocrv6: parsed recognised lines");
-    return { lines, text: lines.join("\n") };
+    return { lines, linesWithGeometry, text: lines.join("\n") };
   },
 };

@@ -17,8 +17,9 @@ import { getIntakeImagePath } from "@/lib/intake/images";
 import { getQueue } from "@/lib/jobs/queue";
 import { logger } from "@/lib/logger";
 import type { OcrEngine } from "@/lib/ocr/engine";
-import { extractBackCover, extractFrontCover } from "@/lib/ocr/extract";
+import { type CatalogHint, extractBackCover, extractFrontCover } from "@/lib/ocr/extract";
 import { activeOcrEngine } from "@/lib/ocr/index";
+import type { EnrichedBook } from "@/types/book";
 import { and, eq } from "drizzle-orm";
 
 /** OCR lifecycle for an intake book (mirrors the DB enum). */
@@ -102,6 +103,11 @@ export async function runOcr(
   const frontPath = getIntakeImagePath(sessionId, bookId, "front");
   const backPath = getIntakeImagePath(sessionId, bookId, "back");
 
+  // Pull the online-enrichment result (Slice C) to disambiguate title vs author
+  // on the front cover (US-D5). Best-effort: any absence just means OCR runs on
+  // its own signals.
+  const catalogHint = readCatalogHint(sessionId, bookId);
+
   logger.debug(
     {
       sessionId,
@@ -129,12 +135,15 @@ export async function runOcr(
     attempted += 1;
     try {
       logger.debug({ sessionId, bookId, frontPath }, "runOcr: recognising front cover");
-      const { lines } = await engine.recognize(frontPath);
-      const front = extractFrontCover(lines);
+      const result = await engine.recognize(frontPath);
+      // Prefer geometry-carrying lines (US-D5 size heuristic); fall back to
+      // plain text lines for engines/stubs that don't expose boxes.
+      const frontInput = result.linesWithGeometry ?? result.lines;
+      const front = extractFrontCover(frontInput, catalogHint);
       title = front.title ?? null;
       author = front.author ?? null;
       logger.debug(
-        { sessionId, bookId, lineCount: lines.length, title, author },
+        { sessionId, bookId, lineCount: result.lines.length, title, author },
         "runOcr: front cover recognised",
       );
     } catch (err) {
@@ -201,6 +210,34 @@ export async function runOcr(
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Read a title/author hint from the book's online-enrichment payload, if any.
+ * Used to disambiguate the front-cover OCR title from the author (US-D5). The
+ * payload is the merged `EnrichedBook`; we take the short title (falling back to
+ * the long one) and the first author. Returns `undefined` when nothing usable
+ * is stored, so extraction runs on OCR signals alone.
+ */
+function readCatalogHint(sessionId: string, bookId: string): CatalogHint | undefined {
+  const db = getDb();
+  const row = db
+    .select({ enrichedPayload: intakeBooks.enrichedPayload })
+    .from(intakeBooks)
+    .where(and(eq(intakeBooks.sessionId, sessionId), eq(intakeBooks.id, bookId)))
+    .get();
+
+  const payload = row?.enrichedPayload as Partial<EnrichedBook> | null | undefined;
+  if (!payload) return undefined;
+
+  const title = payload.titleShort ?? payload.titleLong;
+  const author = payload.authors?.[0];
+  if (!title && !author) return undefined;
+
+  return {
+    ...(title ? { title } : {}),
+    ...(author ? { author } : {}),
+  };
 }
 
 /** A concise OCR snapshot for the review UI + polling. */

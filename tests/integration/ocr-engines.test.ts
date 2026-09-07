@@ -54,6 +54,17 @@ async function expectSomeText(id: OcrEngineId) {
   expect(Array.isArray(result.lines)).toBe(true);
   await expect(JSON.stringify(result, null, 2)).toMatchFileSnapshot(`ocr-result-${id}.json`);
   expect(result.text.length).toBeGreaterThan(0);
+  // US-D5: engines now expose per-line geometry so the extractor can pick the
+  // title by text size. Assert it's present and box-shaped when non-empty.
+  expect(Array.isArray(result.linesWithGeometry)).toBe(true);
+  if (result.linesWithGeometry && result.linesWithGeometry.length > 0) {
+    const [first] = result.linesWithGeometry;
+    expect(typeof first?.text).toBe("string");
+    if (first?.box) {
+      expect(typeof first.box.height).toBe("number");
+      expect(first.box.height).toBeGreaterThanOrEqual(0);
+    }
+  }
 }
 
 describe.skipIf(!hasFixture || !ocrsAvailable)("ocr integration — ocrs", () => {

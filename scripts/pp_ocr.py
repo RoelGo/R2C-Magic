@@ -4,10 +4,17 @@
 Reads a single image path, runs PaddleOCR's PP-OCRv6 pipeline, and prints one
 JSON object to stdout that the Node `pp-ocr` engine adapter consumes:
 
-    {"lines": ["Recognised line 1", "Recognised line 2", ...]}
+    {"lines": [
+        {"text": "Recognised line 1", "box": [x, y, width, height]},
+        {"text": "Recognised line 2"},
+        ...
+    ]}
 
-Lines are ordered top-to-bottom, best effort, so downstream extraction can
-treat the first lines of a front cover as the title.
+Each line carries its axis-aligned bounding box (in source-image pixels) when
+the pipeline exposes one, so downstream extraction (spec v2 US-D5) can use text
+size/position — not just reading order — to tell the title from the author.
+`box` is omitted when geometry is unavailable. Lines are ordered top-to-bottom,
+best effort.
 
 Usage:
     python3 scripts/pp_ocr.py <image> [--model-size medium|small|tiny] [--model-dir DIR]
@@ -92,17 +99,51 @@ def main() -> int:
         eprint(f"PP-OCRv6 failed: {exc}")
         return 1
 
-    lines: list[str] = []
+    lines: list[dict] = []
     # PaddleOCR 3.x returns one result object per input image; recognised
-    # strings live under `rec_texts`, already ordered top-to-bottom.
+    # strings live under `rec_texts`, already ordered top-to-bottom. Per-line
+    # polygons live under `rec_polys` (falling back to `rec_boxes`), aligned by
+    # index with `rec_texts`.
     for result in results or []:
-        texts = result.get("rec_texts", []) if hasattr(result, "get") else []
-        for text in texts:
-            if isinstance(text, str) and text.strip():
-                lines.append(text.strip())
+        if not hasattr(result, "get"):
+            continue
+        texts = result.get("rec_texts", []) or []
+        polys = result.get("rec_polys", None)
+        boxes = result.get("rec_boxes", None)
+        for i, text in enumerate(texts):
+            if not (isinstance(text, str) and text.strip()):
+                continue
+            entry: dict = {"text": text.strip()}
+            box = _line_box(polys, boxes, i)
+            if box is not None:
+                entry["box"] = box
+            lines.append(entry)
 
     json.dump({"lines": lines}, sys.stdout, ensure_ascii=False)
     return 0
+
+
+def _line_box(polys, boxes, i):
+    """Return [x, y, width, height] for line `i`, or None if unavailable.
+
+    Prefers the detection polygon (`rec_polys`, four [x, y] points), reducing it
+    to an axis-aligned box; falls back to a pre-computed [x1, y1, x2, y2] box.
+    """
+    try:
+        if polys is not None and i < len(polys):
+            poly = polys[i]
+            xs = [float(p[0]) for p in poly]
+            ys = [float(p[1]) for p in poly]
+            if xs and ys:
+                x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+                return [x0, y0, x1 - x0, y1 - y0]
+        if boxes is not None and i < len(boxes):
+            b = boxes[i]
+            x0, y0, x1, y1 = float(b[0]), float(b[1]), float(b[2]), float(b[3])
+            return [x0, y0, x1 - x0, y1 - y0]
+    except (TypeError, ValueError, IndexError):
+        return None
+    return None
 
 
 if __name__ == "__main__":
