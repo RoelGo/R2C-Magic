@@ -133,7 +133,7 @@ relevant:
 | `OCR_TIMEOUT_MS` | `30000` | Per-image OCR subprocess timeout |
 | `PP_OCR_PYTHON` | `python3` | Python interpreter for the PP-OCRv6 script |
 | `PP_OCR_SCRIPT` | `scripts/pp_ocr.py` | PP-OCRv6 runner script |
-| `PP_OCR_MODEL_SIZE` | `tiny` | PP-OCRv6 variant: `tiny`, `small`, or `medium` |
+| `PP_OCR_MODEL_SIZE` | `small` | PP-OCRv6 variant: `tiny`, `small`, or `medium` |
 | `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory (overrides size) |
 | `PP_LAYOUT_SCRIPT` | `scripts/pp_layout.py` | Layout-detection runner (US-D6, exploratory) |
 | `PP_LAYOUT_MODEL` | `PP-DocLayout_plus-L` | PaddleOCR layout-detection model |
@@ -188,7 +188,7 @@ unaffected.
 Cover photos are OCR'd **server-side** to pre-fill the title (front cover) and
 description (back cover). OCR is **off by default** (`OCR_ENABLED=false`); the
 photo flow still works and simply skips the suggestion. When enabled, the
-engine is **`pp-ocrv6`** (accurate and, with the `tiny` model, fast). It sits
+engine is **`pp-ocrv6`** (accurate and, with the `small` model, fast). It sits
 behind a small interface (`src/lib/ocr/`) so another engine could be added
 later by switching `OCR_ENGINE`:
 
@@ -225,12 +225,13 @@ invocation, so size drives the cold-start cost:
 
 | Model | Time per photo | Accuracy on sample cover |
 |---|---|---|
-| `tiny` (default) | ~6s | Excellent — a few micro-typos |
-| `small` | ~12s | Excellent |
+| `tiny` | ~6s | Excellent — a few micro-typos |
+| `small` (default) | ~12s | Excellent |
 | `medium` | ~49s | Best |
 
-`tiny` is the default: nearly as accurate as `medium` once cleaned up
-and human-reviewed, but ~8x faster and comfortably inside `OCR_TIMEOUT_MS`. Use
+`small` is the default: a middleground that's essentially as accurate as
+`medium` once cleaned up and human-reviewed, but ~4x faster and comfortably
+inside `OCR_TIMEOUT_MS`. Drop to `tiny` for the fastest cold start, or use
 `medium` only when maximum accuracy justifies the latency. The committed
 snapshot (`tests/integration/ocr-result-pp-ocrv6.json`) captures the engine's
 exact output. Eliminating PP-OCRv6's per-photo cold start entirely

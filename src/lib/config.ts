@@ -71,10 +71,10 @@ const schema = z.object({
   /**
    * PP-OCRv6 det+rec variant. Smaller = far faster cold start with a small
    * accuracy cost (on the sample cover: tiny ~6s, small ~12s, medium ~49s per
-   * run). `tiny` is the default as it fits the OCR timeout and is nearly as
-   * accurate as `medium` after cleanup + human review.
+   * run). `small` is the default: a middleground that fits the OCR timeout and
+   * is noticeably more accurate than `tiny` while far faster than `medium`.
    */
-  PP_OCR_MODEL_SIZE: z.enum(["medium", "small", "tiny"]).default("tiny"),
+  PP_OCR_MODEL_SIZE: z.enum(["medium", "small", "tiny"]).default("small"),
   /** Optional local model dir for PP-OCRv6 (overrides PP_OCR_MODEL_SIZE). */
   PP_OCR_MODEL_DIR: z.string().optional(),
 
