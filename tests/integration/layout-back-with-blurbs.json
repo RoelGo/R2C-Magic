@@ -1,0 +1,91 @@
+{
+  "imageWidth": 3024,
+  "imageHeight": 4032,
+  "regions": [
+    {
+      "label": "text",
+      "score": 0.76,
+      "box": [
+        746,
+        583,
+        1193,
+        1515
+      ],
+      "lineCount": 13,
+      "text": "Een jongeman biedt zich aan om huiswerkbegeleider te worden voor een naar België gevlucht meisje. Ze ontmoeten elkaar, moeizaam, en zoeken naar een gemeenschappelijke taal met het eeuwenoude verhaal van Romeo en Juliet als gids."
+    },
+    {
+      "label": "text",
+      "score": 0.79,
+      "box": [
+        1995,
+        596,
+        512,
+        521
+      ],
+      "lineCount": 9,
+      "text": "'ledereen moet dit lezen. Ik kijk weer met een nieuwe blik naar kinderen die gevlucht zijn, naar onze taal en naar wat regels en zekerheden eigenlijk zijn.' – Anna Drijver"
+    },
+    {
+      "label": "text",
+      "score": 0.79,
+      "box": [
+        1991,
+        1189,
+        506,
+        580
+      ],
+      "lineCount": 10,
+      "text": "'Dit boek slaagt erin op een zeer verfrissende, maar toch literaire wijze een maatschappelijk verhaal, dat zeer gelaagd en daarom ook zo mooi is, te vertellen. Hulde.' -Amir Bachrouri"
+    },
+    {
+      "label": "text",
+      "score": 0.8,
+      "box": [
+        1986,
+        1847,
+        516,
+        461
+      ],
+      "lineCount": 8,
+      "text": "'Dit is niet alleen een ode aan de kracht van verhalen, maar ook zelf een liefdesverhaal. Hartverscheurend en hartverwarmend.' -Peter Verhelst"
+    },
+    {
+      "label": "text",
+      "score": 0.82,
+      "box": [
+        1986,
+        2385,
+        502,
+        572
+      ],
+      "lineCount": 10,
+      "text": "'Een wilde, gevoelige schrijver die autofictie een andere dimensie geeft. Een prikkelend debuut over de betovering, maar ook de beknelling van een ontmoeting. -Julie Cafmeyer"
+    },
+    {
+      "label": "text",
+      "score": 0.68,
+      "box": [
+        807,
+        3012,
+        302,
+        209
+      ],
+      "lineCount": 3,
+      "text": "€2300 Romeo & Jullet lezen"
+    },
+    {
+      "label": "text",
+      "score": 0.73,
+      "box": [
+        1882,
+        3188,
+        620,
+        203
+      ],
+      "lineCount": 4,
+      "text": "B&L Borgerhoff & Lamberigts WWW.BORGERHOFF-LAMBERIGTS.BE"
+    }
+  ],
+  "unassignedLines": []
+}

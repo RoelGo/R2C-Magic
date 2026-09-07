@@ -1,0 +1,165 @@
+{
+  "imageWidth": 3024,
+  "imageHeight": 4032,
+  "regions": [
+    {
+      "label": "header",
+      "score": 0.69,
+      "box": [
+        500,
+        813,
+        583,
+        86
+      ],
+      "lineCount": 1,
+      "text": "Software Engineering/Programming"
+    },
+    {
+      "label": "paragraph_title",
+      "score": 0.57,
+      "box": [
+        463,
+        1007,
+        846,
+        161
+      ],
+      "lineCount": 1,
+      "text": "Clean Code"
+    },
+    {
+      "label": "doc_title",
+      "score": 0.57,
+      "box": [
+        463,
+        1007,
+        846,
+        161
+      ],
+      "lineCount": 0,
+      "text": ""
+    },
+    {
+      "label": "text",
+      "score": 0.9,
+      "box": [
+        551,
+        1197,
+        1664,
+        140
+      ],
+      "lineCount": 3,
+      "text": "Even bad code can function. But if code isn't clean, it can bring a development organization to its knees. Every year, countless hours and significant resources are lost because of poorly written code. But it doesn't have to be that way."
+    },
+    {
+      "label": "text",
+      "score": 0.94,
+      "box": [
+        556,
+        1347,
+        1698,
+        241
+      ],
+      "lineCount": 4,
+      "text": "Noted software expert Robert C. Martin presents a revolutionary paradigm with Clean Code: A Handbook of Agile Software Craftsmanship. Martin has teamed up with his colleagues from Object within you the values of a software craftsman and make you a better programmer—but only if you work at it."
+    },
+    {
+      "label": "text",
+      "score": 0.88,
+      "box": [
+        561,
+        1580,
+        1718,
+        170
+      ],
+      "lineCount": 3,
+      "text": "What kind of work will you be doing? You'll be reading code—lots of code. And you will be challenged to think about what's right about that code, and what's wrong with it. More importantly, you will be challenged to reassess your professional values and your commitment to your craft."
+    },
+    {
+      "label": "text",
+      "score": 0.93,
+      "box": [
+        567,
+        1731,
+        1718,
+        330
+      ],
+      "lineCount": 6,
+      "text": "Clean Code is divided into three parts. The first describes the principles, patterns, and practices of writing clean code. The second part consists of several case studies of increasing complexity. Each case study is an exercise in cleaning up code—of transforming a code base that has some problems into one that is sound and efficient. The third part is the payoff: a single chapter containing a list of heuristics and \"smells\" gathered while creating the case studies. The result is a knowledge base that describes the way we think when we write, read, and clean code."
+    },
+    {
+      "label": "paragraph_title",
+      "score": 0.52,
+      "box": [
+        577,
+        2068,
+        988,
+        81
+      ],
+      "lineCount": 1,
+      "text": "Readers will come away from this book understanding"
+    },
+    {
+      "label": "text",
+      "score": 0.75,
+      "box": [
+        593,
+        2156,
+        1407,
+        428
+      ],
+      "lineCount": 6,
+      "text": "How to tell the difference between good and bad code How to write good code and how to transform bad code into good code How to create good names, good functions, good objects, and good classes How to format code for maximum readability How to implement complete error handling without obscuring code logic How to unit test and practice test-driven development"
+    },
+    {
+      "label": "text",
+      "score": 0.85,
+      "box": [
+        594,
+        2623,
+        1780,
+        383
+      ],
+      "lineCount": 5,
+      "text": "analyst with an interest in producing better code. Robert C. \"Uncle Bob\" Martin has been a software professional since 1970 and an international software consultant since 1990. He is founder and president of Object Mentor, Inc., a team of experienced consultants who mentor their clients worldwide in the fields of C++, Java, C#, Ruby, OO, Design Patterns, UML, Agile Methodologies, and eXtreme programming."
+    },
+    {
+      "label": "text",
+      "score": 0.55,
+      "box": [
+        1869,
+        2935,
+        632,
+        306
+      ],
+      "lineCount": 7,
+      "text": "ISBN-13:978-0-13-235088-4 0-13-235088-2 ISBN-10: 5 4999 1780132350884 $49.99 US"
+    },
+    {
+      "label": "text",
+      "score": 0.82,
+      "box": [
+        561,
+        3102,
+        446,
+        118
+      ],
+      "lineCount": 2,
+      "text": "Cover image: © Spitzer Space Telescope informit.com/martinseries"
+    },
+    {
+      "label": "footer",
+      "score": 0.63,
+      "box": [
+        570,
+        3303,
+        490,
+        136
+      ],
+      "lineCount": 2,
+      "text": "Pearson Addison-Wesley"
+    }
+  ],
+  "unassignedLines": [
+    "This book is a must for any developer, software engineer, project manager, team lead, or systems"
+  ]
+}

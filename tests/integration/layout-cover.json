@@ -1,0 +1,84 @@
+{
+  "imageWidth": 3024,
+  "imageHeight": 4032,
+  "regions": [
+    {
+      "label": "text",
+      "score": 0.74,
+      "box": [
+        509,
+        514,
+        1885,
+        288
+      ],
+      "lineCount": 4,
+      "text": "Utilitarianism is thě most important and influential secular ethic of modern times, but also the most controversial, because it seems to undermine conventional moral views."
+    },
+    {
+      "label": "text",
+      "score": 0.77,
+      "box": [
+        525,
+        849,
+        1861,
+        547
+      ],
+      "lineCount": 6,
+      "text": "This Very Short Introduction provides an authoritative account of the origins of utilitarianism, the main objections to it, and how it can be justified and defended. Utilitarianism remains a force for new thinking on contemporary ethical challenges like global poverty, the treatment of animals, the right to die, and climate change."
+    },
+    {
+      "label": "text",
+      "score": 0.76,
+      "box": [
+        541,
+        1443,
+        1746,
+        358
+      ],
+      "lineCount": 4,
+      "text": "Katarzyna de Lazari-Radek is an assistant professor at the University of Lodz, and co-author, with Peter Singer, of The Point of View of the Universe: Sidgwick and Contemporary Ethics (2016)."
+    },
+    {
+      "label": "text",
+      "score": 0.73,
+      "box": [
+        552,
+        1845,
+        1775,
+        356
+      ],
+      "lineCount": 4,
+      "text": "Peter Singer is the Ira W. DeCamp Professor of Bioethics at Princeton University and author of Practical Ethics (3rd edn, 2011) and Ethics in the Real World (2016), among other books."
+    },
+    {
+      "label": "text",
+      "score": 0.68,
+      "box": [
+        577,
+        2677,
+        1130,
+        182
+      ],
+      "lineCount": 2,
+      "text": "VERY SHORT INTRODUCTIONS Brilliant. Sharp. Inspiring."
+    },
+    {
+      "label": "text",
+      "score": 0.59,
+      "box": [
+        598,
+        3442,
+        405,
+        136
+      ],
+      "lineCount": 2,
+      "text": "www.oup.com/ www.oup.co"
+    }
+  ],
+  "unassignedLines": [
+    "ISBN 978-0-19-872879-5",
+    "OXFORD",
+    "UNIVERSITY PRESS",
+    "9780198728795"
+  ]
+}

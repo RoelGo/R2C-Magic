@@ -135,6 +135,8 @@ relevant:
 | `PP_OCR_SCRIPT` | `scripts/pp_ocr.py` | PP-OCRv6 runner script |
 | `PP_OCR_MODEL_SIZE` | `tiny` | PP-OCRv6 variant: `tiny`, `small`, or `medium` |
 | `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory (overrides size) |
+| `PP_LAYOUT_SCRIPT` | `scripts/pp_layout.py` | Layout-detection runner (US-D6, exploratory) |
+| `PP_LAYOUT_MODEL` | `PP-DocLayout_plus-L` | PaddleOCR layout-detection model |
 | `LIGHTSPEED_CLIENT_ID` | — | Lightspeed Retail OAuth client id (see below) |
 | `LIGHTSPEED_CLIENT_SECRET` | — | Lightspeed Retail OAuth client secret |
 | `LIGHTSPEED_REDIRECT_URI` | — | OAuth callback URL; must match the registered client exactly |
@@ -234,6 +236,23 @@ snapshot (`tests/integration/ocr-result-pp-ocrv6.json`) captures the engine's
 exact output. Eliminating PP-OCRv6's per-photo cold start entirely
 (e.g. a warm, long-lived worker process) is tracked as a separate story — see
 the roadmap.
+
+### Layout detection (US-D6, exploratory)
+
+To improve back-cover **description** detection, `src/lib/ocr/layout.ts`
+(`detectLayout`) runs PaddleOCR's document **layout detection** (PP-DocLayout)
+alongside OCR and groups the recognised lines into regions (paragraphs, titles,
+publisher/footer, etc.) via `scripts/pp_layout.py`. On sample back covers this
+cleanly separates the main blurb from press quotes, the author bio, and the
+ISBN/price block. It is **not yet wired into the intake flow** — the integration
+test snapshots its output on `back-with-blurbs.jpg`, `back-with-a-lot-of-text.jpg`,
+and `cover.jpg` (`tests/integration/layout-*.json`) so we can design the
+description-selection heuristic:
+
+```sh
+PP_OCR_PYTHON=.venv-ocr/bin/python \
+  OCR_TIMEOUT_MS=120000 pnpm test:lib:integration
+```
 
 
 ## Mapping configuration

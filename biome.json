@@ -16,7 +16,8 @@
       "imports",
       "templates",
       "public",
-      "tests/integration/ocr-result-*.json"
+      "tests/integration/ocr-result-*.json",
+      "tests/integration/layout-*.json"
     ]
   },
   "formatter": {

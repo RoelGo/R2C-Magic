@@ -79,6 +79,14 @@ const schema = z.object({
   PP_OCR_MODEL_DIR: z.string().optional(),
 
   /**
+   * Layout-aware description detection (spec v2 US-D6, exploratory). Runs
+   * PaddleOCR layout detection + OCR to group back-cover text into paragraphs.
+   */
+  PP_LAYOUT_SCRIPT: z.string().default("scripts/pp_layout.py"),
+  /** PaddleOCR layout-detection model name (PP-DocLayout family). */
+  PP_LAYOUT_MODEL: z.string().default("PP-DocLayout_plus-L"),
+
+  /**
    * Lightspeed Retail (R-Series) OAuth client credentials (spec v2 Slice F).
    * rokko runs an omnichannel subscription, so products are pushed through the
    * Retail API rather than the eCom API. The connection flow (authorization

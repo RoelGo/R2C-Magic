@@ -315,6 +315,70 @@ website — all of which end up appended to the description today.
 > `OcrEngine` geometry extension) and can be picked up after the review form
 > (Slice E) lands, since the form already lets the worker correct any residue.
 
+#### US-D7 — Auto-pick the blurb via layout regions (M)
+*As a worker, I want the OCR description pre-filled with just the main blurb
+paragraph, chosen automatically from the back cover's layout, so it's usually
+right without me touching it.*
+
+**Why:** Line-only heuristics (US-D6) struggle to separate the blurb from press
+quotes and boilerplate. PaddleOCR **layout detection** already segments the back
+cover into regions (paragraphs, titles, publisher/footer, metadata) with boxes
+and labels — implemented in `src/lib/ocr/layout.ts` (`detectLayout`) and
+snapshotted for three sample covers (`tests/integration/layout-*.json`). Review
+of those snapshots showed the main blurb is reliably the **widest** text region,
+while press quotes are narrow side-column regions and ISBN/price/publisher carry
+distinct labels (`footer`) or metadata patterns.
+
+- Run `detectLayout` on the back cover and choose the description region by a
+  simple, reviewable heuristic: prefer **`text`-labelled** regions, exclude
+  `header`/`footer`/`doc_title`/`paragraph_title` and obvious metadata regions
+  (ISBN / price / URL / imprint patterns), then pick the **widest** remaining
+  region (ties broken by area / prose length). Concatenate its lines into the
+  description.
+- Keep the current `extractBackCover` line-join as the **fallback** when layout
+  detection is unavailable, errors, or returns no usable region — never block
+  (US-D4 contract).
+- This is a **quick win**: it reuses the existing `detectLayout` output and only
+  adds a pure region-selection function (unit-testable against the committed
+  layout snapshots) plus wiring in `runOcr`.
+- The worker can still edit the result freely, and US-D8 lets them override the
+  auto-pick region-by-region when it's wrong.
+
+> **Depends on:** `src/lib/ocr/layout.ts` (done). Layout detection runs as a
+> second PaddleOCR pass; measure its added latency and keep it off the critical
+> path (same async, non-blocking contract as OCR — US-C2).
+
+#### US-D8 — Select description regions on the cover image (L)
+*As a worker, when the auto-picked blurb is wrong, I want to tap the paragraphs I
+do want directly on the back-cover photo and save them as the description, so
+fixing it is a few taps instead of retyping.*
+
+**Why:** Even a good auto-pick (US-D7) will sometimes grab the wrong region or
+miss part of a two-paragraph blurb. Because layout detection already returns
+per-region **boxes**, we can render them as tappable overlays on the captured
+image and let the worker compose the description by selection.
+
+- On the review form (Slice E), a **"Select description from back cover"** action
+  opens the back-cover photo with the detected layout **regions drawn as
+  selectable overlays** (using each region's `box`, scaled to the displayed
+  image).
+- Tapping a region toggles it selected/deselected; selected regions are
+  highlighted. The auto-picked region (US-D7) starts pre-selected.
+- A **"Save as description"** button concatenates the selected regions' text (in
+  top-to-bottom reading order) and writes it into the description field, marking
+  its provenance as OCR/manual (US-E2). The worker can still edit afterwards.
+- Mobile-first: large tap targets, works in portrait, and degrades gracefully —
+  if no regions are available (layout failed), the action is hidden and the
+  worker uses the plain OCR/manual description.
+- Persist the captured region geometry with the book (Slice G / US-G1) so the
+  selection survives a reload.
+
+> **Depends on:** US-D7 (region selection heuristic + persisted layout regions)
+> and the Slice E review form. Needs the layout regions exposed to the client
+> (an API/snapshot of `LayoutResult`) and image-coordinate → display-coordinate
+> scaling. No new model work — reuses `detectLayout`.
+
+
 ---
 
 ### Slice E — Assisted review form
