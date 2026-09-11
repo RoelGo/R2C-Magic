@@ -64,10 +64,13 @@ ENV OCR_ENABLED=false \
     PADDLE_PDX_CACHE_HOME=/app/data/.paddlex
 
 # `gosu` lets the entrypoint drop from root to the host-provided PUID/PGID.
-# python3 + libgomp1 are the shared-library runtime PaddleOCR needs; the
-# self-contained venv (paddleocr/paddlepaddle) is copied from the ppocr stage.
+# python3 + the shared libs below are PaddleOCR's runtime deps: libgomp1
+# (OpenMP), and libgl1 + libglib2.0-0 (OpenCV, pulled in by paddleocr — without
+# them `import paddleocr` fails with "libGL.so.1: cannot open shared object
+# file", which the runner script misreports as "paddleocr is not installed").
+# The self-contained venv (paddleocr/paddlepaddle) is copied from the ppocr stage.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      gosu python3 libgomp1 \
+      gosu python3 libgomp1 libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=ppocr /opt/ocr-venv /opt/ocr-venv
 
