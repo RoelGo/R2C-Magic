@@ -4,7 +4,7 @@ import { setBookEanAction } from "@/app/intake/actions";
 import { BarcodeScanner } from "@/components/barcode-scanner";
 import { cleanEan, isValidEan13 } from "@/lib/intake/ean";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 
 interface EanCaptureProps {
   sessionId: string;
@@ -48,28 +48,35 @@ export function EanCapture({ sessionId, bookId, initialEan }: EanCaptureProps) {
     });
   }
 
-  function handleDetected(rawValue: string) {
+  /**
+   * Shared result path for both camera modes: a scanned barcode (US-B1) and an
+   * OCR'd printed ISBN (WI-3) land here identically. Memoised so the scanner's
+   * camera effect does not restart on every re-render of this component.
+   */
+  const handleDetected = useCallback((rawValue: string) => {
     setScanning(false);
     const digits = cleanEan(rawValue);
     setValue(digits);
     if (isValidEan13(digits)) {
-      save(digits);
+      saveRef.current(digits);
     } else {
       setManual(true);
       setError("Scanned code is not a valid EAN-13. Check the number and confirm.");
     }
-  }
+  }, []);
+
+  // `save` closes over fresh state each render; the memoised callback reads it
+  // through a ref so it can stay stable.
+  const saveRef = useRef(save);
+  saveRef.current = save;
+
+  const handleCancel = useCallback(() => {
+    setScanning(false);
+    setManual(true);
+  }, []);
 
   if (scanning) {
-    return (
-      <BarcodeScanner
-        onDetected={handleDetected}
-        onCancel={() => {
-          setScanning(false);
-          setManual(true);
-        }}
-      />
-    );
+    return <BarcodeScanner onDetected={handleDetected} onCancel={handleCancel} />;
   }
 
   return (
@@ -81,7 +88,7 @@ export function EanCapture({ sessionId, bookId, initialEan }: EanCaptureProps) {
         </div>
       ) : (
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Scan the book&apos;s barcode, or enter the EAN/ISBN manually.
+          Scan the book&apos;s barcode, read the printed ISBN, or enter the EAN/ISBN manually.
         </p>
       )}
 
