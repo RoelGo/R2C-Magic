@@ -23,16 +23,55 @@ export type SubmitBookResult =
   | { ok: false; error: string };
 
 /**
+ * In-flight pushes, keyed by book. WI-1: a single worker "submit" was landing
+ * on Retail twice (two front + two back images), because the server action can
+ * be dispatched more than once for one user action (rapid double tap on the
+ * mobile button, a client retry of the action POST on a flaky connection, a
+ * React re-dispatch). `uploadItemImage` unconditionally POSTs a new image, so
+ * every extra invocation appends another full set.
+ *
+ * Pushing is not idempotent, so we make it single-flight per book: the second
+ * concurrent invocation joins the first promise instead of starting a second
+ * upload sequence. Process-local is sufficient — the app is a single-process,
+ * self-hosted deployment (AGENTS.md: in-process queue + SQLite state).
+ */
+const inFlightPushes = new Map<string, Promise<SubmitBookResult>>();
+
+/**
  * Push a single reviewed intake book to Retail and persist the result.
+ *
+ * Concurrent calls for the same book share one push (see `inFlightPushes`).
  *
  * @throws only for programmer errors (book not found in session). Expected
  * failures (not connected, EAN not in Retail, API/image errors) return an
  * `{ ok: false }` result and mark the book `failed` with a retryable message.
  */
-export async function submitIntakeBook(
+export function submitIntakeBook(
   sessionId: string,
   bookId: string,
   options: { createIfMissing?: boolean } = {},
+): Promise<SubmitBookResult> {
+  const key = `${sessionId}:${bookId}`;
+  const existing = inFlightPushes.get(key);
+  if (existing) {
+    logger.warn(
+      { sessionId, bookId },
+      "intake push already in flight — joining it instead of pushing twice",
+    );
+    return existing;
+  }
+
+  const pending = runSubmit(sessionId, bookId, options).finally(() => {
+    inFlightPushes.delete(key);
+  });
+  inFlightPushes.set(key, pending);
+  return pending;
+}
+
+async function runSubmit(
+  sessionId: string,
+  bookId: string,
+  options: { createIfMissing?: boolean },
 ): Promise<SubmitBookResult> {
   const db = getDb();
   const book = db

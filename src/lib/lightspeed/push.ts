@@ -26,6 +26,7 @@ import {
   updateItem,
   uploadItemImage,
 } from "@/lib/lightspeed/api";
+import { logger } from "@/lib/logger";
 
 /** A captured cover photo, resolved to bytes for upload. */
 export interface PushImage {
@@ -122,6 +123,12 @@ export async function pushBookToRetail(
   // reported but the item content is already live and recoverable.
   const title = book.reviewedTitle?.trim() || book.title?.trim() || "";
   const ordered = [...images].sort((a, b) => orderingFor(a.kind) - orderingFor(b.kind));
+  // WI-1 diagnostics: one line per push, so a duplicated push is visible in the
+  // logs (two entries for the same bookId/itemID) rather than only on the Item.
+  logger.info(
+    { bookId: book.id, itemID, imageKinds: ordered.map((i) => i.kind) },
+    "pushing cover images to Retail",
+  );
   const imageIDs: string[] = [];
   for (const image of ordered) {
     try {

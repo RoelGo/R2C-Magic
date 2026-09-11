@@ -2,7 +2,7 @@
 
 import { pushIntakeBookAction } from "@/app/intake/actions";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 type RetailLookupStatus = "idle" | "checking" | "found" | "missing" | "error";
 
@@ -46,6 +46,8 @@ export function PushStep({
   const [error, setError] = useState<string | null>(status === "failed" ? pushError : null);
   const [pushed, setPushed] = useState(status === "pushed");
   const [createIfMissing, setCreateIfMissing] = useState(false);
+  // Synchronous guard against a double-dispatch of the push action (WI-1).
+  const submitting = useRef(false);
 
   const missing = retailLookupStatus === "missing";
   const lookupBlocks = retailLookupStatus === "error" || retailLookupStatus === "checking";
@@ -56,17 +58,22 @@ export function PushStep({
     reviewed && !lookupBlocks && (retailLookupStatus === "found" || (missing && createIfMissing));
 
   function push() {
+    // WI-1: `isPending` only flips on the next render, so two quick taps on a
+    // phone both get past `disabled` and dispatch the action twice — which
+    // uploads the cover photos twice. This ref is a synchronous latch.
+    if (submitting.current) return;
+    submitting.current = true;
     setError(null);
     startTransition(async () => {
-      const result = await pushIntakeBookAction(sessionId, bookId, {
-        createIfMissing: missing && createIfMissing,
-      });
-      if (result.ok) {
-        setPushed(true);
+      try {
+        const result = await pushIntakeBookAction(sessionId, bookId, {
+          createIfMissing: missing && createIfMissing,
+        });
+        if (result.ok) setPushed(true);
+        else setError(result.error);
         router.refresh();
-      } else {
-        setError(result.error);
-        router.refresh();
+      } finally {
+        submitting.current = false;
       }
     });
   }
