@@ -27,7 +27,7 @@ and inference, at some accuracy cost:
     tiny            — smallest / fastest (also baked in)
 
 Only the baked sizes work offline: asking for a size whose weights are not in
-PADDLE_PDX_CACHE_HOME makes PaddleOCR try three model hosts with retries before
+PADDLE_PDX_CACHE_HOME makes PaddleOCR try three model hosts with retrI goies before
 failing, which from the Node side looks like an unexplained timeout.
 
 Setup (once per environment; see README). Use a virtualenv so it works
@@ -80,6 +80,17 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--mkldnn",
+        default="auto",
+        choices=["auto", "on", "off"],
+        help=(
+            "oneDNN (MKL-DNN) CPU acceleration. 'auto' (default) tries it and "
+            "transparently retries without it if the backend errors — some x86 "
+            "CPUs hit an unimplemented oneDNN op in Paddle's PIR executor "
+            "(ConvertPirAttribute2RuntimeAttribute). 'off' skips it outright."
+        ),
+    )
+    parser.add_argument(
         "--selftest",
         action="store_true",
         help=(
@@ -103,18 +114,34 @@ def main() -> int:
         )
         return 2
 
-    # PaddleOCR 3.x runs the PP-OCRv6 pipeline and downloads the det/rec
-    # weights on first use unless a local model dir is supplied — see
-    # `_pipeline_kwargs` / `--selftest`.
-    kwargs = _pipeline_kwargs(args)
-
     try:
-        ocr = PaddleOCR(**kwargs)
         image, scale = _load_image(args.image, args.max_side)
-        results = ocr.predict(image)
-    except Exception as exc:  # noqa: BLE001 - surface any engine failure
-        eprint(f"PP-OCRv6 failed: {exc}")
+    except Exception as exc:  # noqa: BLE001
+        eprint(f"PP-OCRv6 failed to read the image: {exc}")
         return 1
+
+    results = None
+    attempts = _mkldnn_attempts(args.mkldnn)
+    for attempt, enable_mkldnn in enumerate(attempts):
+        last = attempt == len(attempts) - 1
+        # PaddleOCR 3.x runs the PP-OCRv6 pipeline and downloads the det/rec
+        # weights on first use unless a local model dir is supplied — see
+        # `_pipeline_kwargs` / `--selftest`.
+        if enable_mkldnn is False:
+            _disable_mkldnn_globally()
+        kwargs = _pipeline_kwargs(args, enable_mkldnn)
+        try:
+            ocr = PaddleOCR(**kwargs)
+            results = ocr.predict(image)
+            break
+        except Exception as exc:  # noqa: BLE001 - surface any engine failure
+            if last:
+                eprint(f"PP-OCRv6 failed: {exc}")
+                return 1
+            eprint(
+                f"PP-OCRv6 failed with enable_mkldnn={enable_mkldnn} ({exc}); "
+                "retrying without oneDNN acceleration"
+            )
 
     lines: list[dict] = []
     # PaddleOCR 3.x returns one result object per input image; recognised
@@ -190,18 +217,46 @@ def selftest(args) -> int:
         eprint(f"paddleocr        : IMPORT FAILED: {exc}")
         return 1
 
-    kwargs = _pipeline_kwargs(args)
-    eprint(f"pipeline kwargs  : {kwargs}")
-    eprint("building pipeline (this is what downloads the weights on a cold start)…")
-    started = time.monotonic()
-    try:
-        PaddleOCR(**kwargs)
-    except Exception as exc:  # noqa: BLE001
-        eprint(f"pipeline build   : FAILED after {time.monotonic() - started:.1f}s: {exc}")
+    ok = False
+    for enable_mkldnn in _mkldnn_attempts(args.mkldnn):
+        if enable_mkldnn is False:
+            _disable_mkldnn_globally()
+        kwargs = _pipeline_kwargs(args, enable_mkldnn)
+        eprint(f"pipeline kwargs  : {kwargs}")
+        eprint("building pipeline (this is what downloads the weights on a cold start)…")
+        started = time.monotonic()
+        try:
+            ocr = PaddleOCR(**kwargs)
+            eprint(f"pipeline build   : ok in {time.monotonic() - started:.1f}s")
+            # Inference, not just construction: the oneDNN/PIR backend failures
+            # that plague some x86 hosts only surface when a kernel actually
+            # runs, so a build-only self-test would wrongly report success.
+            eprint("running inference on a synthetic image…")
+            started = time.monotonic()
+            ocr.predict(_synthetic_image())
+            eprint(
+                f"inference        : ok in {time.monotonic() - started:.1f}s "
+                f"(enable_mkldnn={enable_mkldnn})"
+            )
+            ok = True
+            break
+        except Exception as exc:  # noqa: BLE001
+            eprint(f"FAILED after {time.monotonic() - started:.1f}s: {exc}")
+
+    if not ok:
+        eprint("Self-test FAILED. See the error(s) above.")
         return 1
-    eprint(f"pipeline build   : ok in {time.monotonic() - started:.1f}s")
     eprint("Self-test passed. If OCR still times out, raise OCR_TIMEOUT_MS.")
     return 0
+
+
+def _synthetic_image():
+    """A small white image with a black bar — enough to exercise det + rec."""
+    import numpy as np
+
+    image = np.full((320, 640, 3), 255, dtype=np.uint8)
+    image[150:170, 100:540] = 0
+    return image
 
 
 def _load_image(path: str, max_side: int):
@@ -238,7 +293,40 @@ def _load_image(path: str, max_side: int):
     return resized, scale
 
 
-def _pipeline_kwargs(args) -> dict:
+def _mkldnn_attempts(mode: str) -> list:
+    """oneDNN settings to try, in order.
+
+    'auto' means: try with oneDNN (faster on x86), and fall back to the plain
+    CPU kernels if the backend blows up. Paddle 3.x's PIR executor raises
+    `(Unimplemented) ConvertPirAttribute2RuntimeAttribute not support …
+    onednn_instruction.cc` on some x86 hosts — a hard failure of the whole
+    inference, not a slow path, and one that never appears on arm64. Retrying
+    costs a pipeline rebuild (sub-second with cached weights).
+    """
+    if mode == "on":
+        return [True]
+    if mode == "off":
+        return [False]
+    return [True, False]
+
+
+def _disable_mkldnn_globally() -> None:
+    """Best-effort global oneDNN kill switch, for the fallback attempt.
+
+    `enable_mkldnn=False` on the predictor is the documented lever, but the
+    retry happens in a process where paddle is already imported, so we also
+    flip the runtime flag where the build supports it. Failures are ignored —
+    this is belt and braces on top of the kwarg.
+    """
+    try:
+        import paddle
+
+        paddle.set_flags({"FLAGS_use_mkldnn": False})
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _pipeline_kwargs(args, enable_mkldnn=None) -> dict:
     """Pipeline construction kwargs shared by OCR and the self-test."""
     # `lang='en'` covers the Latin-script (NL/EN) book covers in scope.
     # We disable the document-orientation / unwarping / textline-orientation
@@ -258,6 +346,8 @@ def _pipeline_kwargs(args) -> dict:
         # Select the PP-OCRv6 det+rec variant by size.
         kwargs["text_detection_model_name"] = f"PP-OCRv6_{args.model_size}_det"
         kwargs["text_recognition_model_name"] = f"PP-OCRv6_{args.model_size}_rec"
+    if enable_mkldnn is not None:
+        kwargs["enable_mkldnn"] = enable_mkldnn
     return kwargs
 
 

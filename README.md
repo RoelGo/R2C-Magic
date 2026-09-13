@@ -136,6 +136,7 @@ relevant:
 | `PP_OCR_MODEL_SIZE` | `small` | PP-OCRv6 variant: `tiny`, `small`, or `medium` |
 | `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory (overrides size) |
 | `PP_OCR_MAX_SIDE` | `1600` | Downscale the cover to this longest edge before OCR (`0` = off) |
+| `PP_OCR_MKLDNN` | `auto` | oneDNN CPU acceleration: `auto` (try, fall back), `on`, `off` |
 | `PP_LAYOUT_SCRIPT` | `scripts/pp_layout.py` | Layout-detection runner (US-D6, exploratory) |
 | `PP_LAYOUT_MODEL` | `PP-DocLayout_plus-L` | PaddleOCR layout-detection model |
 | `LIGHTSPEED_CLIENT_ID` | — | Lightspeed Retail OAuth client id (see below) |
@@ -275,6 +276,12 @@ Known causes of "it just times out":
   text-heavy back cover costs more than a front cover (~35s vs ~17s on 2 CPUs
   with `small`). Give the container more CPUs, raise `OCR_TIMEOUT_MS`, or drop
   to `PP_OCR_MODEL_SIZE=tiny` (~16s for that same back cover).
+- **oneDNN backend failure on x86.** Some x86 CPUs hit
+  `(Unimplemented) ConvertPirAttribute2RuntimeAttribute not support … 
+  onednn_instruction.cc` inside Paddle's PIR executor — the whole inference
+  fails in ~3s, so it reads as "OCR failed", not "slow". Never happens on
+  arm64. `PP_OCR_MKLDNN=auto` (default) retries once without oneDNN; pin it to
+  `off` on an affected host to skip the wasted first attempt.
 - **`libGL.so.1` missing** → `import paddleocr` fails. The runtime image
   installs `libgl1` + `libglib2.0-0`; the self-test surfaces this immediately.
 

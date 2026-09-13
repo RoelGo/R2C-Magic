@@ -43,6 +43,7 @@ export const ppOcrEngine: OcrEngine = {
       args.push("--model-size", config.PP_OCR_MODEL_SIZE);
     }
     args.push("--max-side", String(config.PP_OCR_MAX_SIDE));
+    args.push("--mkldnn", config.PP_OCR_MKLDNN);
 
     logger.info(
       {

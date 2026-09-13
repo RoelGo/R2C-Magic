@@ -89,6 +89,14 @@ const schema = z.object({
    * Line geometry is mapped back to original pixels by the script.
    */
   PP_OCR_MAX_SIDE: z.coerce.number().int().min(0).default(1600),
+  /**
+   * oneDNN (MKL-DNN) CPU acceleration for PP-OCRv6. `auto` tries it and retries
+   * without it when the backend errors: some x86 hosts hit an unimplemented
+   * oneDNN op in Paddle's PIR executor (`ConvertPirAttribute2RuntimeAttribute`)
+   * which fails the whole inference. Pin to `off` to skip the wasted first
+   * attempt on a host that is known to be affected.
+   */
+  PP_OCR_MKLDNN: z.enum(["auto", "on", "off"]).default("auto"),
 
   /**
    * Layout-aware description detection (spec v2 US-D6, exploratory). Runs
