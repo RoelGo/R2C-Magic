@@ -130,11 +130,12 @@ relevant:
 | `ERROR_COLUMN_NAME` | `_enrichment_errors` | Name of that column |
 | `OCR_ENABLED` | `false` | Master switch for server-side cover OCR |
 | `OCR_ENGINE` | `pp-ocrv6` | Which OCR engine: `pp-ocrv6` or `none` |
-| `OCR_TIMEOUT_MS` | `30000` | Per-image OCR subprocess timeout |
+| `OCR_TIMEOUT_MS` | `60000` | Per-image OCR subprocess timeout |
 | `PP_OCR_PYTHON` | `python3` | Python interpreter for the PP-OCRv6 script |
 | `PP_OCR_SCRIPT` | `scripts/pp_ocr.py` | PP-OCRv6 runner script |
 | `PP_OCR_MODEL_SIZE` | `small` | PP-OCRv6 variant: `tiny`, `small`, or `medium` |
 | `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory (overrides size) |
+| `PP_OCR_MAX_SIDE` | `1600` | Downscale the cover to this longest edge before OCR (`0` = off) |
 | `PP_LAYOUT_SCRIPT` | `scripts/pp_layout.py` | Layout-detection runner (US-D6, exploratory) |
 | `PP_LAYOUT_MODEL` | `PP-DocLayout_plus-L` | PaddleOCR layout-detection model |
 | `LIGHTSPEED_CLIENT_ID` | — | Lightspeed Retail OAuth client id (see below) |
@@ -223,11 +224,11 @@ stub, keeping the unit suite hermetic.
 PP-OCRv6 ships in three sizes (`PP_OCR_MODEL_SIZE`); each reloads its models per
 invocation, so size drives the cold-start cost:
 
-| Model | Time per photo | Accuracy on sample cover |
-|---|---|---|
-| `tiny` | ~6s | Excellent — a few micro-typos |
-| `small` (default) | ~12s | Excellent |
-| `medium` | ~49s | Best |
+| Model | Time per photo (dev laptop) | In Docker, 2 CPUs | Accuracy on sample cover |
+|---|---|---|---|
+| `tiny` | ~6s | ~16s (text-heavy back cover) | Excellent — a few micro-typos |
+| `small` (default) | ~12s | ~17s front / ~35s back | Excellent |
+| `medium` | ~49s | not baked into the image | Best |
 
 `small` is the default: a middleground that's essentially as accurate as
 `medium` once cleaned up and human-reviewed, but ~4x faster and comfortably
@@ -237,6 +238,45 @@ snapshot (`tests/integration/ocr-result-pp-ocrv6.json`) captures the engine's
 exact output. Eliminating PP-OCRv6's per-photo cold start entirely
 (e.g. a warm, long-lived worker process) is tracked as a separate story — see
 the roadmap.
+
+### Troubleshooting OCR (especially in Docker)
+
+OCR runs as a Python subprocess, so a failure can look like a silent timeout
+from Node. Two things to reach for first:
+
+1. **Run the self-test inside the container.** It separates a broken install
+   from a missing model cache from a merely slow CPU:
+
+   ```sh
+   docker exec -it <container> /opt/ocr-venv/bin/python scripts/pp_ocr.py --selftest
+   ```
+
+   It prints the interpreter, the paddle/paddleocr versions, the model cache
+   location + whether the weights are present, and times a pipeline build.
+
+2. **Set `LOG_LEVEL=debug`.** The engine adapter streams the Python process's
+   stderr line by line, so you see PaddleOCR's own progress/warnings live
+   instead of waiting for a kill. The stderr tail is now attached to *every*
+   subprocess error, including timeouts.
+
+Known causes of "it just times out":
+
+- **Model weights downloading on first use.** The image bakes the `small` and
+  `tiny` PP-OCRv6 weights into `/opt/paddlex` (`PADDLE_PDX_CACHE_HOME`) so a
+  fresh container needs no internet. Switching to `medium` re-introduces a
+  one-off download into a read-only path — point `PADDLE_PDX_CACHE_HOME` at a
+  writable dir if you do.
+- **PaddleOCR's model-host connectivity probe** stalling on a host with no or
+  filtered egress. The image sets `PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True`.
+- **Full-resolution phone photos.** A 12 MP cover takes ~47s on 2 cores versus
+  ~17s at `PP_OCR_MAX_SIDE=1600`, for byte-identical text. Lower it further if
+  your host is slower still.
+- **A genuinely slow host.** Each photo pays a fresh Python + model load, and a
+  text-heavy back cover costs more than a front cover (~35s vs ~17s on 2 CPUs
+  with `small`). Give the container more CPUs, raise `OCR_TIMEOUT_MS`, or drop
+  to `PP_OCR_MODEL_SIZE=tiny` (~16s for that same back cover).
+- **`libGL.so.1` missing** → `import paddleocr` fails. The runtime image
+  installs `libgl1` + `libglib2.0-0`; the self-test surfaces this immediately.
 
 ### Layout detection (US-D6, exploratory)
 

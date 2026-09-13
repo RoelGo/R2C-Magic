@@ -14,7 +14,7 @@ import { config } from "@/lib/config";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import type { OcrEngine, OcrLine, OcrResult } from "../engine";
-import { runSubprocess } from "../subprocess";
+import { SubprocessError, runSubprocess } from "../subprocess";
 
 /**
  * The script emits one line per recognised text. For backward compatibility we
@@ -42,20 +42,48 @@ export const ppOcrEngine: OcrEngine = {
     } else {
       args.push("--model-size", config.PP_OCR_MODEL_SIZE);
     }
+    args.push("--max-side", String(config.PP_OCR_MAX_SIDE));
 
-    logger.debug(
-      { python: config.PP_OCR_PYTHON, args, cwd: process.cwd(), timeoutMs: config.OCR_TIMEOUT_MS },
+    logger.info(
+      {
+        python: config.PP_OCR_PYTHON,
+        args,
+        cwd: process.cwd(),
+        timeoutMs: config.OCR_TIMEOUT_MS,
+        cacheHome: process.env.PADDLE_PDX_CACHE_HOME ?? null,
+      },
       "pp-ocrv6: invoking script",
     );
 
-    const { stdout, stderr } = await runSubprocess(config.PP_OCR_PYTHON, {
-      args,
-      timeoutMs: config.OCR_TIMEOUT_MS,
-    });
+    let stdout: string;
+    let stderr: string;
+    let durationMs: number;
+    try {
+      // PaddleOCR is chatty on stderr (model downloads, progress, warnings).
+      // Streaming it gives us live evidence while a slow/hanging run is still
+      // in flight — the previous execFile version discarded all of it on kill.
+      ({ stdout, stderr, durationMs } = await runSubprocess(config.PP_OCR_PYTHON, {
+        args,
+        timeoutMs: config.OCR_TIMEOUT_MS,
+        onStderrLine: (line) => logger.debug({ line }, "pp-ocrv6: stderr"),
+      }));
+    } catch (err) {
+      if (err instanceof SubprocessError) {
+        logger.error(
+          {
+            python: config.PP_OCR_PYTHON,
+            ...err.detail,
+            hint: err.detail.timedOut
+              ? "First run downloads model weights into PADDLE_PDX_CACHE_HOME; if the stderr tail is empty the process is likely stuck fetching them. Pre-bake the models or raise OCR_TIMEOUT_MS."
+              : undefined,
+          },
+          "pp-ocrv6: script failed",
+        );
+      }
+      throw err;
+    }
 
     if (stderr.trim().length > 0) {
-      // PaddleOCR is chatty on stderr (progress, warnings); log at debug so it
-      // is available when diagnosing but doesn't spam normal runs.
       logger.debug({ stderr: stderr.trim().slice(0, 2000) }, "pp-ocrv6: script stderr");
     }
 
@@ -94,7 +122,7 @@ export const ppOcrEngine: OcrEngine = {
     }
 
     const lines = linesWithGeometry.map((l) => l.text);
-    logger.debug({ lineCount: lines.length }, "pp-ocrv6: parsed recognised lines");
+    logger.info({ lineCount: lines.length, durationMs }, "pp-ocrv6: recognised image");
     return { lines, linesWithGeometry, text: lines.join("\n") };
   },
 };

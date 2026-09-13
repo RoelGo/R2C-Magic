@@ -63,7 +63,12 @@ const schema = z.object({
     .transform((v) => v.toLowerCase() === "true"),
   /** Which subprocess engine to run. `none` disables OCR regardless. */
   OCR_ENGINE: z.enum(["none", "pp-ocrv6"]).default("pp-ocrv6"),
-  OCR_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  /**
+   * Per-image budget for the OCR subprocess. It covers a cold Python start
+   * (importing paddle is seconds on its own) plus inference, so it is far from
+   * tight: a 12 MP cover on a 2-core NAS measures ~17s end to end.
+   */
+  OCR_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
 
   /** Python interpreter + script that run PP-OCRv6 and emit JSON on stdout. */
   PP_OCR_PYTHON: z.string().default("python3"),
@@ -77,6 +82,13 @@ const schema = z.object({
   PP_OCR_MODEL_SIZE: z.enum(["medium", "small", "tiny"]).default("small"),
   /** Optional local model dir for PP-OCRv6 (overrides PP_OCR_MODEL_SIZE). */
   PP_OCR_MODEL_DIR: z.string().optional(),
+  /**
+   * Longest edge (px) the cover is downscaled to before recognition; 0 keeps
+   * the original. Phone uploads are ~12 MP, on which PP-OCRv6 is roughly 3x
+   * slower for byte-identical text (measured: 47s → 17s at 1600px on 2 cores).
+   * Line geometry is mapped back to original pixels by the script.
+   */
+  PP_OCR_MAX_SIDE: z.coerce.number().int().min(0).default(1600),
 
   /**
    * Layout-aware description detection (spec v2 US-D6, exploratory). Runs

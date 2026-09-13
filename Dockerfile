@@ -10,13 +10,30 @@
 # copied wholesale into the runtime stage. PP_OCR_PYTHON points at it there.
 FROM node:20-bookworm-slim AS ppocr
 ENV DEBIAN_FRONTEND=noninteractive
+# libgl1 + libglib2.0-0 are OpenCV's runtime deps (pulled in by paddleocr);
+# without them `import paddleocr` fails, which we must catch at BUILD time.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      python3 python3-venv python3-pip libgomp1 \
+      python3 python3-venv python3-pip libgomp1 libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/ocr-venv
 ENV PATH=/opt/ocr-venv/bin:$PATH
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir paddlepaddle paddleocr
+
+# Pre-download the PP-OCRv6 weights into the image. Without this, the FIRST OCR
+# run in a fresh container silently blocks while PaddleOCR fetches ~tens of MB
+# of weights from the internet — which on a slow or firewalled host looks
+# exactly like "OCR timed out" with no other logs. Baking them makes the
+# runtime fully offline and the first run as fast as the rest.
+#
+# `--selftest` builds the pipeline (which is what triggers the download) and
+# exits non-zero on any failure, so a broken OCR runtime breaks the build
+# loudly here instead of mysteriously at 03:00 in the shop.
+ENV PADDLE_PDX_CACHE_HOME=/opt/paddlex
+COPY scripts/pp_ocr.py /tmp/pp_ocr.py
+RUN python /tmp/pp_ocr.py --selftest --model-size small \
+    && python /tmp/pp_ocr.py --selftest --model-size tiny \
+    && rm /tmp/pp_ocr.py
 
 # --- deps ---------------------------------------------------------------
 FROM node:20-bookworm-slim AS deps
@@ -55,13 +72,19 @@ ENV NODE_ENV=production \
 # --- Cover OCR (PP-OCRv6) ------------------------------------------------
 # OCR is opt-in at runtime (OCR_ENABLED=true) but the engine is baked in so no
 # image rebuild is needed to turn it on. PP_OCR_PYTHON points at the venv from
-# the `ppocr` stage; model weights download to PADDLE_PDX_CACHE_HOME on first
-# use (under the /app/data volume) so they persist across restarts.
+# the `ppocr` stage, and PADDLE_PDX_CACHE_HOME at the model weights that were
+# pre-downloaded there — so the first OCR run needs no internet and no
+# multi-minute download. Override it to a writable path if you want to use a
+# model size that isn't baked in (`medium`), which will then be fetched once.
+# PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK skips PaddleOCR's "checking connectivity
+# to the model hosters" probe — pointless with baked weights, and it stalls on a
+# host with no/filtered egress, which surfaces as an unexplained OCR timeout.
 ENV OCR_ENABLED=false \
     OCR_ENGINE=pp-ocrv6 \
     PP_OCR_PYTHON=/opt/ocr-venv/bin/python \
     PP_OCR_MODEL_SIZE=small \
-    PADDLE_PDX_CACHE_HOME=/app/data/.paddlex
+    PADDLE_PDX_CACHE_HOME=/opt/paddlex \
+    PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK=True
 
 # `gosu` lets the entrypoint drop from root to the host-provided PUID/PGID.
 # python3 + the shared libs below are PaddleOCR's runtime deps: libgomp1
@@ -73,6 +96,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       gosu python3 libgomp1 libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=ppocr /opt/ocr-venv /opt/ocr-venv
+# Pre-downloaded PP-OCRv6 weights (see the ppocr stage). Read-only at runtime.
+COPY --from=ppocr /opt/paddlex /opt/paddlex
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs \
     && mkdir -p /app/data && chown -R nextjs:nodejs /app/data
@@ -90,13 +115,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 
 # --- Cover OCR engine ------------------------------------------------------
-# The PP-OCRv6 runtime (paddleocr/paddlepaddle) is baked into the image via the
-# `ppocr` stage above and wired up through the OCR_*/PP_OCR_* env vars. It stays
-# dormant until OCR_ENABLED=true, so the default runtime cost is just the venv
-# on disk. Enable at run time with e.g. OCR_ENABLED=true (OCR_ENGINE defaults to
-# pp-ocrv6). Model weights are fetched on first use into PADDLE_PDX_CACHE_HOME
-# (under the /app/data volume) so they persist across restarts.
-
+# The PP-OCRv6 runtime (paddleocr/paddlepaddle) AND its model weights are baked
+# into the image via the `ppocr` stage above and wired up through the OCR_*/
+# PP_OCR_* env vars. It stays dormant until OCR_ENABLED=true, so the default
+# runtime cost is just disk. Enable at run time with OCR_ENABLED=true
+# (OCR_ENGINE defaults to pp-ocrv6).
+#
+# Diagnosing OCR in a running container:
+#   docker exec -it <container> /opt/ocr-venv/bin/python scripts/pp_ocr.py --selftest
+# and set LOG_LEVEL=debug to see the Python process's stderr streamed live.
 
 # NOTE: we intentionally do NOT set `USER nextjs` here. The container starts as
 # root so docker-entrypoint.sh can align the runtime user with the host's

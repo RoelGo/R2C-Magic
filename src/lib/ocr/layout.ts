@@ -23,7 +23,7 @@ import { config } from "@/lib/config";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 import type { OcrBox } from "./engine";
-import { runSubprocess } from "./subprocess";
+import { SubprocessError, runSubprocess } from "./subprocess";
 
 /** A recognised text line with its bounding box, in source-image pixels. */
 export interface LayoutTextLine {
@@ -97,15 +97,25 @@ export async function detectLayout(imagePath: string): Promise<LayoutResult> {
   }
   args.push("--layout-model", config.PP_LAYOUT_MODEL);
 
-  logger.debug(
+  logger.info(
     { python: config.PP_OCR_PYTHON, args, timeoutMs: config.OCR_TIMEOUT_MS },
     "detectLayout: invoking script",
   );
 
-  const { stdout, stderr } = await runSubprocess(config.PP_OCR_PYTHON, {
-    args,
-    timeoutMs: config.OCR_TIMEOUT_MS,
-  });
+  let stdout: string;
+  let stderr: string;
+  try {
+    ({ stdout, stderr } = await runSubprocess(config.PP_OCR_PYTHON, {
+      args,
+      timeoutMs: config.OCR_TIMEOUT_MS,
+      onStderrLine: (line) => logger.debug({ line }, "detectLayout: stderr"),
+    }));
+  } catch (err) {
+    if (err instanceof SubprocessError) {
+      logger.error({ ...err.detail }, "detectLayout: script failed");
+    }
+    throw err;
+  }
 
   if (stderr.trim().length > 0) {
     logger.debug({ stderr: stderr.trim().slice(0, 2000) }, "detectLayout: script stderr");

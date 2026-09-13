@@ -21,9 +21,14 @@ Usage:
 
 `--model-size` picks a PP-OCRv6 det+rec variant. Smaller = faster cold start
 and inference, at some accuracy cost:
-    medium (default) — most accurate, slowest
-    small            — lighter
-    tiny             — smallest / fastest
+    medium          — most accurate, slowest
+    small (default) — lighter; matches PP_OCR_MODEL_SIZE and is baked into the
+                      Docker image, so it needs no download at run time
+    tiny            — smallest / fastest (also baked in)
+
+Only the baked sizes work offline: asking for a size whose weights are not in
+PADDLE_PDX_CACHE_HOME makes PaddleOCR try three model hosts with retries before
+failing, which from the Node side looks like an unexplained timeout.
 
 Setup (once per environment; see README). Use a virtualenv so it works
 regardless of a Homebrew/system Python that blocks global installs:
@@ -49,19 +54,46 @@ def eprint(*args: object) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run PP-OCRv6 on an image.")
-    parser.add_argument("image", help="Path to the image to OCR.")
+    parser.add_argument("image", nargs="?", help="Path to the image to OCR.")
     parser.add_argument(
         "--model-size",
-        default="medium",
+        default="small",
         choices=["medium", "small", "tiny"],
-        help="PP-OCRv6 det+rec variant (default: medium).",
+        help=(
+            "PP-OCRv6 det+rec variant (default: small, matching the app's "
+            "PP_OCR_MODEL_SIZE default and the weights baked into the image)."
+        ),
     )
     parser.add_argument(
         "--model-dir",
         default=None,
         help="Optional local PP-OCRv6 model directory (overrides --model-size).",
     )
+    parser.add_argument(
+        "--max-side",
+        type=int,
+        default=1600,
+        help=(
+            "Downscale the image so its longest side is at most this many pixels "
+            "before recognition (default: 1600; 0 disables). Phone cameras produce "
+            "12 MP covers on which PP-OCRv6 is ~3x slower for identical text."
+        ),
+    )
+    parser.add_argument(
+        "--selftest",
+        action="store_true",
+        help=(
+            "Diagnose the environment instead of running OCR: prints the Python/"
+            "paddle versions, the model cache location and whether the weights are "
+            "already downloaded, then builds the pipeline (timing the cold start)."
+        ),
+    )
     args = parser.parse_args()
+
+    if args.selftest:
+        return selftest(args)
+    if not args.image:
+        parser.error("an image path is required (or pass --selftest)")
 
     try:
         from paddleocr import PaddleOCR
@@ -71,30 +103,15 @@ def main() -> int:
         )
         return 2
 
-    # `lang='en'` covers the Latin-script (NL/EN) book covers in scope.
     # PaddleOCR 3.x runs the PP-OCRv6 pipeline and downloads the det/rec
-    # weights on first use unless a local model dir is supplied. We disable the
-    # document-orientation / unwarping / textline-orientation sub-models: book
-    # covers are already upright, so skipping them is faster and avoids extra
-    # model downloads.
-    kwargs = {
-        "lang": "en",
-        "use_doc_orientation_classify": False,
-        "use_doc_unwarping": False,
-        "use_textline_orientation": False,
-    }
-    if args.model_dir:
-        # Point both detection and recognition at the supplied local models.
-        kwargs["text_detection_model_dir"] = args.model_dir
-        kwargs["text_recognition_model_dir"] = args.model_dir
-    else:
-        # Select the PP-OCRv6 det+rec variant by size.
-        kwargs["text_detection_model_name"] = f"PP-OCRv6_{args.model_size}_det"
-        kwargs["text_recognition_model_name"] = f"PP-OCRv6_{args.model_size}_rec"
+    # weights on first use unless a local model dir is supplied — see
+    # `_pipeline_kwargs` / `--selftest`.
+    kwargs = _pipeline_kwargs(args)
 
     try:
         ocr = PaddleOCR(**kwargs)
-        results = ocr.predict(args.image)
+        image, scale = _load_image(args.image, args.max_side)
+        results = ocr.predict(image)
     except Exception as exc:  # noqa: BLE001 - surface any engine failure
         eprint(f"PP-OCRv6 failed: {exc}")
         return 1
@@ -116,11 +133,132 @@ def main() -> int:
             entry: dict = {"text": text.strip()}
             box = _line_box(polys, boxes, i)
             if box is not None:
-                entry["box"] = box
+                # Report geometry in ORIGINAL image pixels, so downscaling for
+                # speed stays invisible to the extraction heuristics (US-D5).
+                entry["box"] = [v / scale for v in box] if scale != 1.0 else box
             lines.append(entry)
 
     json.dump({"lines": lines}, sys.stdout, ensure_ascii=False)
     return 0
+
+
+def selftest(args) -> int:
+    """Print environment diagnostics for the OCR runtime (stderr), exit 0/1.
+
+    Run inside the container when OCR "just times out":
+
+        docker exec -it r2c-magic /opt/ocr-venv/bin/python scripts/pp_ocr.py --selftest
+
+    It separates the three things that look identical from Node's side: a
+    broken install (import fails), a missing model cache (weights download on
+    first use — slow or impossible without internet), and a genuinely slow CPU
+    (pipeline builds, but takes longer than OCR_TIMEOUT_MS).
+    """
+    import os
+    import time
+
+    eprint(f"python           : {sys.version.split()[0]} ({sys.executable})")
+    eprint(f"cwd              : {os.getcwd()}")
+    eprint(f"HOME             : {os.environ.get('HOME', '<unset>')}")
+
+    cache_home = os.environ.get("PADDLE_PDX_CACHE_HOME")
+    eprint(f"PADDLE_PDX_CACHE_HOME: {cache_home or '<unset — defaults to ~/.paddlex>'}")
+    cache_dir = cache_home or os.path.expanduser("~/.paddlex")
+    eprint(f"cache dir exists : {os.path.isdir(cache_dir)}")
+    eprint(f"cache dir writable: {os.access(cache_dir, os.W_OK) if os.path.isdir(cache_dir) else 'n/a'}")
+    official = os.path.join(cache_dir, "official_models")
+    if os.path.isdir(official):
+        models = sorted(os.listdir(official))
+        eprint(f"cached models    : {models or '<none>'}")
+    else:
+        eprint("cached models    : <none — first run must DOWNLOAD the weights>")
+
+    try:
+        import paddle  # noqa: F401
+
+        eprint(f"paddlepaddle     : {paddle.__version__}")
+    except Exception as exc:  # noqa: BLE001
+        eprint(f"paddlepaddle     : IMPORT FAILED: {exc}")
+        return 1
+
+    try:
+        import paddleocr
+
+        eprint(f"paddleocr        : {paddleocr.__version__}")
+        from paddleocr import PaddleOCR
+    except Exception as exc:  # noqa: BLE001
+        eprint(f"paddleocr        : IMPORT FAILED: {exc}")
+        return 1
+
+    kwargs = _pipeline_kwargs(args)
+    eprint(f"pipeline kwargs  : {kwargs}")
+    eprint("building pipeline (this is what downloads the weights on a cold start)…")
+    started = time.monotonic()
+    try:
+        PaddleOCR(**kwargs)
+    except Exception as exc:  # noqa: BLE001
+        eprint(f"pipeline build   : FAILED after {time.monotonic() - started:.1f}s: {exc}")
+        return 1
+    eprint(f"pipeline build   : ok in {time.monotonic() - started:.1f}s")
+    eprint("Self-test passed. If OCR still times out, raise OCR_TIMEOUT_MS.")
+    return 0
+
+
+def _load_image(path: str, max_side: int):
+    """Return (image, scale) for `path`, downscaled to `max_side` if needed.
+
+    `scale` is the factor applied to the original (1.0 when untouched), so line
+    boxes can be mapped back to original-image pixels. Recognition quality is
+    unaffected at 1600px — PaddleOCR internally caps the long side at 4000
+    anyway — but runtime drops roughly threefold on a 12 MP phone photo, which
+    is the difference between fitting and blowing OCR_TIMEOUT_MS on a NAS CPU.
+    """
+    if not max_side or max_side <= 0:
+        return path, 1.0
+
+    import cv2
+
+    image = cv2.imread(path)
+    if image is None:
+        # Let PaddleOCR deal with (and report on) anything OpenCV can't read.
+        return path, 1.0
+
+    height, width = image.shape[:2]
+    longest = max(height, width)
+    if longest <= max_side:
+        return image, 1.0
+
+    scale = max_side / longest
+    eprint(f"downscaling {width}x{height} by {scale:.3f} for OCR speed")
+    resized = cv2.resize(
+        image,
+        (max(1, int(width * scale)), max(1, int(height * scale))),
+        interpolation=cv2.INTER_AREA,
+    )
+    return resized, scale
+
+
+def _pipeline_kwargs(args) -> dict:
+    """Pipeline construction kwargs shared by OCR and the self-test."""
+    # `lang='en'` covers the Latin-script (NL/EN) book covers in scope.
+    # We disable the document-orientation / unwarping / textline-orientation
+    # sub-models: book covers are already upright, so skipping them is faster
+    # and avoids extra model downloads.
+    kwargs = {
+        "lang": "en",
+        "use_doc_orientation_classify": False,
+        "use_doc_unwarping": False,
+        "use_textline_orientation": False,
+    }
+    if args.model_dir:
+        # Point both detection and recognition at the supplied local models.
+        kwargs["text_detection_model_dir"] = args.model_dir
+        kwargs["text_recognition_model_dir"] = args.model_dir
+    else:
+        # Select the PP-OCRv6 det+rec variant by size.
+        kwargs["text_detection_model_name"] = f"PP-OCRv6_{args.model_size}_det"
+        kwargs["text_recognition_model_name"] = f"PP-OCRv6_{args.model_size}_rec"
+    return kwargs
 
 
 def _line_box(polys, boxes, i):
