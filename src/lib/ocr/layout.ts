@@ -1,5 +1,5 @@
 /**
- * Layout-aware OCR for back-cover description detection (spec v2 US-D6, R&D).
+ * Layout-aware OCR for back-cover description detection (spec v2 US-D7).
  *
  * PaddleOCR ships a document **layout detection** model (PP-DocLayout) that
  * segments an image into regions (paragraphs, titles, etc.) with bounding boxes
@@ -15,9 +15,9 @@
  * behind a subprocess for the same reasons as the OCR engine, and this layer
  * only validates + shapes the JSON contract.
  *
- * For now this is exploratory: the integration test snapshots the output on
- * sample back covers so we can pick a description-selection heuristic. It is not
- * yet wired into the intake flow.
+ * The region-selection heuristic built on this lives in `description.ts`
+ * (US-D7); the integration test snapshots this output on sample back covers so
+ * that heuristic can be unit-tested without running a model.
  */
 import { config } from "@/lib/config";
 import { logger } from "@/lib/logger";

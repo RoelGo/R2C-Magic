@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { OcrEngine } from "../../src/lib/ocr/engine";
+import type { LayoutResult } from "../../src/lib/ocr/layout";
 import { useTmpEnv } from "../helpers/tmp-env";
 
 function fakeJpeg(size = 64): Uint8Array {
@@ -134,6 +135,95 @@ describe("lib/intake/ocr", () => {
     const { createSession } = await import("../../src/lib/intake");
     const { getOcrSnapshot } = await import("../../src/lib/intake/ocr");
     expect(getOcrSnapshot(createSession(), "nope")).toBeUndefined();
+  });
+
+  describe("back-cover layout detection (US-D7)", () => {
+    const blurb =
+      "Een jongeman biedt zich aan om huiswerkbegeleider te worden voor een naar " +
+      "Belgie gevlucht meisje. Ze ontmoeten elkaar, moeizaam.";
+
+    /** A layout result with a wide blurb region and a narrow press quote. */
+    function layoutWithBlurb(): LayoutResult {
+      return {
+        imageWidth: 1000,
+        imageHeight: 1000,
+        regions: [
+          {
+            label: "text",
+            score: 0.8,
+            box: { x: 0, y: 100, width: 700, height: 400 },
+            lines: [{ text: blurb, box: { x: 0, y: 100, width: 700, height: 400 } }],
+            text: blurb,
+          },
+          {
+            label: "text",
+            score: 0.8,
+            box: { x: 750, y: 100, width: 200, height: 400 },
+            lines: [
+              {
+                text: "'Briljant.' - De Standaard",
+                box: { x: 750, y: 100, width: 200, height: 400 },
+              },
+            ],
+            text: "'Briljant.' - De Standaard",
+          },
+        ],
+        unassignedLines: [
+          { text: "ISBN 9789012345678", box: { x: 0, y: 900, width: 200, height: 40 } },
+        ],
+      };
+    }
+
+    it("prefers the layout blurb region over the raw OCR lines", async () => {
+      const { sessionId, bookId } = await seedBookWithPhotos({ back: true });
+      const { runOcr, getOcrSnapshot } = await import("../../src/lib/intake/ocr");
+
+      const recognize = vi.fn(async () => ({ lines: ["unused"], text: "unused" }));
+      await runOcr(sessionId, bookId, stubEngine(recognize), async () => layoutWithBlurb());
+
+      expect(getOcrSnapshot(sessionId, bookId)?.suggestions.description).toBe(blurb);
+      // The layout pass already did the recognition — no second OCR pass.
+      expect(recognize).not.toHaveBeenCalled();
+    });
+
+    it("falls back to joining the layout's own lines when no region qualifies", async () => {
+      const { sessionId, bookId } = await seedBookWithPhotos({ back: true });
+      const { runOcr, getOcrSnapshot } = await import("../../src/lib/intake/ocr");
+
+      const recognize = vi.fn(async () => ({ lines: ["unused"], text: "unused" }));
+      await runOcr(sessionId, bookId, stubEngine(recognize), async () => ({
+        imageWidth: 100,
+        imageHeight: 100,
+        regions: [
+          {
+            label: "footer",
+            score: 0.5,
+            box: { x: 0, y: 10, width: 100, height: 10 },
+            lines: [{ text: "Short blurb.", box: { x: 0, y: 10, width: 100, height: 10 } }],
+            text: "Short blurb.",
+          },
+        ],
+        unassignedLines: [{ text: "And a tail.", box: { x: 0, y: 40, width: 100, height: 10 } }],
+      }));
+
+      expect(getOcrSnapshot(sessionId, bookId)?.suggestions.description).toBe(
+        "Short blurb. And a tail.",
+      );
+      expect(recognize).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the OCR engine when layout detection fails", async () => {
+      const { sessionId, bookId } = await seedBookWithPhotos({ back: true });
+      const { runOcr, getOcrSnapshot } = await import("../../src/lib/intake/ocr");
+
+      const engine = stubEngine(async () => ({ lines: ["Plain blurb."], text: "Plain blurb." }));
+      const errors = await runOcr(sessionId, bookId, engine, async () => {
+        throw new Error("layout model missing");
+      });
+
+      expect(errors).toEqual([]);
+      expect(getOcrSnapshot(sessionId, bookId)?.suggestions.description).toBe("Plain blurb.");
+    });
   });
 
   it("startOcr marks running synchronously then completes via the queue", async () => {

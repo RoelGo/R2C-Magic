@@ -10,20 +10,43 @@
  *
  * The engine is a swappable subprocess adapter (`pp-ocrv6`), selected
  * by config; tests inject a stub so the unit suite needs no binary or model.
+ *
+ * For the back cover we prefer layout detection (US-D7): PaddleOCR segments the
+ * cover into regions and we keep the blurb region, so press quotes, the author
+ * bio and ISBN/price/publisher blocks stay out of the description. The plain
+ * line-join extraction remains the fallback whenever layout detection is off,
+ * fails, or finds no usable region.
  */
+import { config } from "@/lib/config";
 import { getDb } from "@/lib/db/client";
 import { intakeBooks } from "@/lib/db/schema";
 import { getIntakeImagePath } from "@/lib/intake/images";
 import { getQueue } from "@/lib/jobs/queue";
 import { logger } from "@/lib/logger";
+import { describeFromLayout, layoutLines } from "@/lib/ocr/description";
 import type { OcrEngine } from "@/lib/ocr/engine";
 import { type CatalogHint, extractBackCover, extractFrontCover } from "@/lib/ocr/extract";
 import { activeOcrEngine } from "@/lib/ocr/index";
+import { type LayoutResult, detectLayout } from "@/lib/ocr/layout";
 import type { EnrichedBook } from "@/types/book";
 import { and, eq } from "drizzle-orm";
 
 /** OCR lifecycle for an intake book (mirrors the DB enum). */
 export type IntakeOcrStatus = "idle" | "running" | "done" | "empty" | "failed";
+
+/**
+ * Layout detection for one image (US-D7). Injectable so tests can stub it and
+ * so the flow degrades to plain OCR when it is disabled or unavailable.
+ */
+export type LayoutDetector = (imagePath: string) => Promise<LayoutResult>;
+
+/** The configured layout detector, or `undefined` when it is switched off. */
+export function activeLayoutDetector(): LayoutDetector | undefined {
+  if (!config.OCR_ENABLED || config.OCR_ENGINE === "none" || !config.PP_LAYOUT_ENABLED) {
+    return undefined;
+  }
+  return detectLayout;
+}
 
 export type OcrCoverKind = "front" | "back";
 
@@ -38,12 +61,14 @@ export interface OcrError {
  * No-op that marks `empty` when OCR is disabled/unconfigured, so the flow
  * degrades gracefully instead of hanging on "running".
  *
- * `engine` is injectable for tests; production uses the configured engine.
+ * `engine` and `layout` are injectable for tests; production uses the
+ * configured engine + layout detector.
  */
 export function startOcr(
   sessionId: string,
   bookId: string,
   engine: OcrEngine | undefined = activeOcrEngine(),
+  layout: LayoutDetector | undefined = activeLayoutDetector(),
 ): void {
   const db = getDb();
 
@@ -69,7 +94,7 @@ export function startOcr(
   // Fire-and-forget on the shared queue. runOcr never throws, but guard the
   // queue task itself so a scheduling error can't vanish silently.
   void getQueue()
-    .add(() => runOcr(sessionId, bookId, engine))
+    .add(() => runOcr(sessionId, bookId, engine, layout))
     .catch((err) => {
       logger.error(
         { sessionId, bookId, err: errorMessage(err) },
@@ -87,6 +112,7 @@ export async function runOcr(
   sessionId: string,
   bookId: string,
   engine: OcrEngine | undefined = activeOcrEngine(),
+  layout: LayoutDetector | undefined = activeLayoutDetector(),
 ): Promise<OcrError[]> {
   const db = getDb();
   const errors: OcrError[] = [];
@@ -159,10 +185,9 @@ export async function runOcr(
     attempted += 1;
     try {
       logger.debug({ sessionId, bookId, backPath }, "runOcr: recognising back cover");
-      const { lines } = await engine.recognize(backPath);
-      description = extractBackCover(lines) ?? null;
+      description = await readBackCover(sessionId, bookId, backPath, engine, layout);
       logger.debug(
-        { sessionId, bookId, lineCount: lines.length, descriptionLength: description?.length ?? 0 },
+        { sessionId, bookId, descriptionLength: description?.length ?? 0 },
         "runOcr: back cover recognised",
       );
     } catch (err) {
@@ -210,6 +235,52 @@ export async function runOcr(
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Read the back-cover description (US-D4, refined by US-D7).
+ *
+ * Preferred path: one layout-detection pass segments the cover into regions and
+ * `describeFromLayout` picks the blurb region, skipping press quotes, bio and
+ * metadata. When layout detection is off, fails, or yields no usable region we
+ * fall back to the plain line-join extraction — reusing the layout pass's own
+ * recognised lines when we have them, so the fallback costs no extra pass.
+ * Only a completely failed layout run falls back to the OCR engine, whose
+ * failure then propagates to the caller as a recorded back-cover error.
+ */
+async function readBackCover(
+  sessionId: string,
+  bookId: string,
+  backPath: string,
+  engine: OcrEngine,
+  layout: LayoutDetector | undefined,
+): Promise<string | null> {
+  if (layout) {
+    try {
+      const result = await layout(backPath);
+      const fromRegion = describeFromLayout(result);
+      if (fromRegion) {
+        logger.debug(
+          { sessionId, bookId, regionCount: result.regions.length },
+          "runOcr: description picked from a layout region",
+        );
+        return fromRegion;
+      }
+      logger.debug(
+        { sessionId, bookId, regionCount: result.regions.length },
+        "runOcr: no usable layout region — falling back to line-join extraction",
+      );
+      return extractBackCover(layoutLines(result)) ?? null;
+    } catch (err) {
+      logger.warn(
+        { sessionId, bookId, backPath, err: errorMessage(err) },
+        "runOcr: layout detection failed — falling back to the OCR engine",
+      );
+    }
+  }
+
+  const { lines } = await engine.recognize(backPath);
+  return extractBackCover(lines) ?? null;
 }
 
 /**

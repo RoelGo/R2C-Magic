@@ -99,9 +99,16 @@ const schema = z.object({
   PP_OCR_MKLDNN: z.enum(["auto", "on", "off"]).default("auto"),
 
   /**
-   * Layout-aware description detection (spec v2 US-D6, exploratory). Runs
-   * PaddleOCR layout detection + OCR to group back-cover text into paragraphs.
+   * Layout-aware description detection (spec v2 US-D7). Runs PaddleOCR layout
+   * detection + OCR to group back-cover text into paragraphs, so the blurb can
+   * be picked over press quotes and boilerplate. On by default when OCR is
+   * enabled; set to `false` to fall back to the plain line-join extraction
+   * (e.g. when the layout model is unavailable or too slow on the host).
    */
+  PP_LAYOUT_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
   PP_LAYOUT_SCRIPT: z.string().default("scripts/pp_layout.py"),
   /** PaddleOCR layout-detection model name (PP-DocLayout family). */
   PP_LAYOUT_MODEL: z.string().default("PP-DocLayout_plus-L"),

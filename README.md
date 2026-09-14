@@ -137,7 +137,8 @@ relevant:
 | `PP_OCR_MODEL_DIR` | — | Optional local PP-OCRv6 model directory (overrides size) |
 | `PP_OCR_MAX_SIDE` | `1600` | Downscale the cover to this longest edge before OCR (`0` = off) |
 | `PP_OCR_MKLDNN` | `auto` | oneDNN CPU acceleration: `auto` (try, fall back), `on`, `off` |
-| `PP_LAYOUT_SCRIPT` | `scripts/pp_layout.py` | Layout-detection runner (US-D6, exploratory) |
+| `PP_LAYOUT_ENABLED` | `true` | Pick the back-cover blurb via layout detection (US-D7) |
+| `PP_LAYOUT_SCRIPT` | `scripts/pp_layout.py` | Layout-detection runner |
 | `PP_LAYOUT_MODEL` | `PP-DocLayout_plus-L` | PaddleOCR layout-detection model |
 | `LIGHTSPEED_CLIENT_ID` | — | Lightspeed Retail OAuth client id (see below) |
 | `LIGHTSPEED_CLIENT_SECRET` | — | Lightspeed Retail OAuth client secret |
