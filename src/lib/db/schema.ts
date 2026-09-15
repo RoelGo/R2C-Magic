@@ -186,6 +186,14 @@ export const intakeBooks = sqliteTable("intake_books", {
   /** Per-image OCR errors as a JSON array of { kind, message }. */
   ocrErrors: text("ocr_errors", { mode: "json" }),
   /**
+   * Back-cover layout regions from the layout pass (spec v2 US-D7/US-D8), as
+   * `{ imageWidth, imageHeight, regions: [{ id, label, box, text,
+   * autoSelected }] }`. Persisted so the worker can re-open the tap-to-select
+   * description picker after a reload (US-G1). Null when layout detection is
+   * off, failed, or found nothing.
+   */
+  ocrBackRegions: text("ocr_back_regions", { mode: "json" }),
+  /**
    * Worker-confirmed values from the assisted review form (spec v2 Slice E,
    * US-E1/E2). These are the authoritative values pushed to the webshop in
    * Slice F — distinct from the enrichment/OCR *suggestions* above, which the

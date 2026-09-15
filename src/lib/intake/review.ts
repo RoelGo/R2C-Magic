@@ -21,6 +21,7 @@
 import { getDb } from "@/lib/db/client";
 import { intakeBooks } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
+import type { BackCoverRegions } from "@/lib/ocr/description";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getEnrichmentSnapshot } from "./enrichment";
@@ -58,6 +59,12 @@ export interface ReviewModel {
   weightGrams: number | null;
   /** Whether a front cover exists — part of the US-E3 required set. */
   hasFrontImage: boolean;
+  /**
+   * Back-cover layout regions the worker can tap-select to compose the
+   * description (US-D8). Null when layout detection produced none, in which
+   * case the form hides the "select from back cover" action.
+   */
+  backRegions: BackCoverRegions | null;
   /** Previously-saved reviewed values (present when reopening the form). */
   saved: {
     title: string | null;
@@ -140,6 +147,7 @@ export function buildReviewModel(sessionId: string, bookId: string): ReviewModel
     description,
     weightGrams: online?.weightGrams ?? null,
     hasFrontImage: false, // filled by the page, which already lists images
+    backRegions: ocr?.backRegions ?? null,
     saved:
       row.reviewedTitle !== null ||
       row.reviewedAuthor !== null ||

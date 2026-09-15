@@ -186,6 +186,37 @@ describe("lib/intake/ocr", () => {
       expect(recognize).not.toHaveBeenCalled();
     });
 
+    it("persists the tappable regions for the picker (US-D8)", async () => {
+      const { sessionId, bookId } = await seedBookWithPhotos({ back: true });
+      const { runOcr, getOcrSnapshot } = await import("../../src/lib/intake/ocr");
+
+      await runOcr(
+        sessionId,
+        bookId,
+        stubEngine(async () => ({ lines: [], text: "" })),
+        async () => layoutWithBlurb(),
+      );
+
+      const regions = getOcrSnapshot(sessionId, bookId)?.backRegions;
+      expect(regions?.imageWidth).toBe(1000);
+      expect(regions?.regions.map((r) => r.autoSelected)).toEqual([true, false]);
+      expect(regions?.regions[0]?.text).toBe(blurb);
+    });
+
+    it("leaves the regions unset when layout detection is unavailable", async () => {
+      const { sessionId, bookId } = await seedBookWithPhotos({ back: true });
+      const { runOcr, getOcrSnapshot } = await import("../../src/lib/intake/ocr");
+
+      await runOcr(
+        sessionId,
+        bookId,
+        stubEngine(async () => ({ lines: ["Plain blurb."], text: "Plain blurb." })),
+        undefined,
+      );
+
+      expect(getOcrSnapshot(sessionId, bookId)?.backRegions).toBeUndefined();
+    });
+
     it("falls back to joining the layout's own lines when no region qualifies", async () => {
       const { sessionId, bookId } = await seedBookWithPhotos({ back: true });
       const { runOcr, getOcrSnapshot } = await import("../../src/lib/intake/ocr");

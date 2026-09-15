@@ -53,6 +53,52 @@ describe("lib/intake/review", () => {
     db.update(intakeBooks).set(set).where(eq(intakeBooks.id, bookId)).run();
   }
 
+  it("surfaces the persisted back-cover regions for the picker (US-D8)", async () => {
+    const { sessionId, bookId } = await seedBook();
+    const { getDb } = await import("../../src/lib/db/client");
+    const { intakeBooks } = await import("../../src/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+    getDb()
+      .update(intakeBooks)
+      .set({
+        ocrStatus: "done",
+        ocrBackRegions: {
+          imageWidth: 1000,
+          imageHeight: 1500,
+          regions: [
+            {
+              id: "r0",
+              label: "text",
+              box: { x: 10, y: 20, width: 500, height: 300 },
+              text: "The blurb.",
+              autoSelected: true,
+            },
+          ],
+        },
+      })
+      .where(eq(intakeBooks.id, bookId))
+      .run();
+
+    const { buildReviewModel } = await import("../../src/lib/intake/review");
+    const model = buildReviewModel(sessionId, bookId);
+    expect(model?.backRegions?.regions[0]?.text).toBe("The blurb.");
+  });
+
+  it("reports no regions when the stored JSON is malformed", async () => {
+    const { sessionId, bookId } = await seedBook();
+    const { getDb } = await import("../../src/lib/db/client");
+    const { intakeBooks } = await import("../../src/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+    getDb()
+      .update(intakeBooks)
+      .set({ ocrStatus: "done", ocrBackRegions: { nope: true } })
+      .where(eq(intakeBooks.id, bookId))
+      .run();
+
+    const { buildReviewModel } = await import("../../src/lib/intake/review");
+    expect(buildReviewModel(sessionId, bookId)?.backRegions).toBeNull();
+  });
+
   it("prefers online over OCR for the default value", async () => {
     const { sessionId, bookId } = await seedBook();
     await setSuggestions(bookId, {

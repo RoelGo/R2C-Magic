@@ -1,6 +1,7 @@
 "use client";
 
 import { saveIntakeReviewAction } from "@/app/intake/actions";
+import { DescriptionRegionPicker } from "@/components/description-region-picker";
 import type {
   ReviewFieldSource,
   ReviewModel,
@@ -31,6 +32,7 @@ export function ReviewForm({ sessionId, bookId, model }: ReviewFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(model.saved !== null);
+  const [pickingRegions, setPickingRegions] = useState(false);
 
   const [title, setTitle] = useState<FieldState>(
     initField(model.title, model.saved?.title, model.saved?.titleSource),
@@ -102,15 +104,42 @@ export function ReviewForm({ sessionId, bookId, model }: ReviewFormProps) {
         placeholder="Author name(s)"
       />
 
-      <SuggestField
-        id="review-description"
-        label="Description"
-        multiline
-        state={description}
-        suggestions={model.description.suggestions}
-        onChange={setDescription}
-        placeholder="Back-cover blurb / description"
-      />
+      <div className="space-y-2">
+        <SuggestField
+          id="review-description"
+          label="Description"
+          multiline
+          state={description}
+          suggestions={model.description.suggestions}
+          onChange={setDescription}
+          placeholder="Back-cover blurb / description"
+        />
+
+        {/* US-D8: hidden entirely when layout detection found no regions. */}
+        {model.backRegions ? (
+          pickingRegions ? (
+            <DescriptionRegionPicker
+              sessionId={sessionId}
+              bookId={bookId}
+              regions={model.backRegions}
+              currentValue={description.value}
+              onSave={(value) => {
+                setDescription({ value, source: "ocr" });
+                setPickingRegions(false);
+              }}
+              onCancel={() => setPickingRegions(false)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPickingRegions(true)}
+              className="w-full rounded-md border border-slate-300 px-4 py-3 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              Select description from back cover
+            </button>
+          )
+        ) : null}
+      </div>
 
       <div className="space-y-1.5">
         <label

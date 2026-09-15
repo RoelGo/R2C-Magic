@@ -18,6 +18,7 @@
  * The caller keeps the line-join extraction (`extractBackCover`) as the
  * fallback whenever this returns `undefined` — OCR never blocks (US-D4).
  */
+import { z } from "zod";
 import type { LayoutRegion, LayoutResult } from "./layout";
 
 /** Layout labels that are structurally never the blurb. */
@@ -103,4 +104,78 @@ export function describeFromLayout(result: LayoutResult): string | undefined {
 export function layoutLines(result: LayoutResult): string[] {
   const lines = [...result.regions.flatMap((r) => r.lines), ...result.unassignedLines];
   return lines.sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x).map((l) => l.text);
+}
+
+/* ------------------------------------------------------------------ *
+ * Persisted regions for the tap-to-select UI (US-D8)
+ * ------------------------------------------------------------------ */
+
+/** One tappable back-cover region, as stored on the book and sent to the UI. */
+export const descriptionRegionSchema = z.object({
+  /** Stable index-based id, used as the React key + selection handle. */
+  id: z.string(),
+  /** Layout label from the model (shown as a small hint on the overlay). */
+  label: z.string(),
+  /** Region box in source-image pixels. */
+  box: z.object({
+    x: z.number(),
+    y: z.number(),
+    width: z.number(),
+    height: z.number(),
+  }),
+  /** The region's recognised text. */
+  text: z.string(),
+  /** True for the region the auto-pick chose (US-D7); pre-selected in the UI. */
+  autoSelected: z.boolean(),
+});
+
+/** The back cover's regions plus the image dimensions their boxes refer to. */
+export const backCoverRegionsSchema = z.object({
+  imageWidth: z.number().positive(),
+  imageHeight: z.number().positive(),
+  regions: z.array(descriptionRegionSchema),
+});
+
+export type DescriptionRegion = z.infer<typeof descriptionRegionSchema>;
+export type BackCoverRegions = z.infer<typeof backCoverRegionsSchema>;
+
+/**
+ * Reduce a layout result to the tappable regions persisted with the book
+ * (US-D8): drop regions with no text, keep boxes + labels, and flag the
+ * auto-picked one so the picker opens with it selected. Returns `undefined`
+ * when there is nothing to show, so the UI can hide the action entirely.
+ */
+export function toBackCoverRegions(result: LayoutResult): BackCoverRegions | undefined {
+  if (result.imageWidth <= 0 || result.imageHeight <= 0) return undefined;
+  const picked = selectDescriptionRegion(result);
+
+  const regions: DescriptionRegion[] = result.regions
+    .map((region, index) => ({ region, index }))
+    .filter(({ region }) => region.text.trim().length > 0)
+    .map(({ region, index }) => ({
+      id: `r${index}`,
+      label: region.label,
+      box: { ...region.box },
+      text: region.text.replace(/\s+/g, " ").trim(),
+      autoSelected: region === picked,
+    }));
+
+  return regions.length > 0
+    ? { imageWidth: result.imageWidth, imageHeight: result.imageHeight, regions }
+    : undefined;
+}
+
+/**
+ * Concatenate the chosen regions into a description, in top-to-bottom reading
+ * order (US-D8). Unknown ids are ignored, so a stale selection degrades to
+ * whatever still exists rather than erroring.
+ */
+export function joinRegions(regions: DescriptionRegion[], selectedIds: string[]): string {
+  const wanted = new Set(selectedIds);
+  return regions
+    .filter((r) => wanted.has(r.id))
+    .sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x)
+    .map((r) => r.text)
+    .join("\n\n")
+    .trim();
 }

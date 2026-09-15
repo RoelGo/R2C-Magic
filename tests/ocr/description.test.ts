@@ -3,8 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   describeFromLayout,
+  joinRegions,
   layoutLines,
   selectDescriptionRegion,
+  toBackCoverRegions,
 } from "../../src/lib/ocr/description";
 import type { LayoutRegion, LayoutResult } from "../../src/lib/ocr/layout";
 
@@ -157,5 +159,59 @@ describe("lib/ocr/description — layoutLines", () => {
       unassignedLines: [{ text: "third", box: { x: 0, y: 90, width: 10, height: 10 } }],
     });
     expect(lines).toEqual(["first", "second", "third"]);
+  });
+});
+
+describe("lib/ocr/description — toBackCoverRegions / joinRegions (US-D8)", () => {
+  it("exposes every text-carrying region and flags the auto-picked one", () => {
+    const regions = toBackCoverRegions(loadSnapshot("back-with-blurbs"));
+    expect(regions?.imageWidth).toBe(3024);
+    expect(regions?.regions).toHaveLength(7);
+    const auto = regions?.regions.filter((r) => r.autoSelected) ?? [];
+    expect(auto).toHaveLength(1);
+    expect(auto[0]?.text).toMatch(/^Een jongeman biedt zich aan/);
+  });
+
+  it("drops regions with no recognised text", () => {
+    const regions = toBackCoverRegions(loadSnapshot("back-with-a-lot-of-text"));
+    // The snapshot's `doc_title` region has no lines assigned to it.
+    expect(regions?.regions.every((r) => r.text.length > 0)).toBe(true);
+  });
+
+  it("returns undefined when there is nothing to show", () => {
+    expect(
+      toBackCoverRegions({ imageWidth: 100, imageHeight: 100, regions: [], unassignedLines: [] }),
+    ).toBeUndefined();
+  });
+
+  it("joins the selected regions in top-to-bottom reading order", () => {
+    const regions = [
+      {
+        id: "r0",
+        label: "text",
+        box: { x: 0, y: 200, width: 10, height: 10 },
+        text: "Second.",
+        autoSelected: false,
+      },
+      {
+        id: "r1",
+        label: "text",
+        box: { x: 0, y: 10, width: 10, height: 10 },
+        text: "First.",
+        autoSelected: true,
+      },
+      {
+        id: "r2",
+        label: "text",
+        box: { x: 0, y: 400, width: 10, height: 10 },
+        text: "Skipped.",
+        autoSelected: false,
+      },
+    ];
+    expect(joinRegions(regions, ["r0", "r1"])).toBe("First.\n\nSecond.");
+  });
+
+  it("ignores unknown ids from a stale selection", () => {
+    expect(joinRegions([], ["r9"])).toBe("");
   });
 });

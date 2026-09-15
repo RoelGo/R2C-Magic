@@ -23,7 +23,13 @@ import { intakeBooks } from "@/lib/db/schema";
 import { getIntakeImagePath } from "@/lib/intake/images";
 import { getQueue } from "@/lib/jobs/queue";
 import { logger } from "@/lib/logger";
-import { describeFromLayout, layoutLines } from "@/lib/ocr/description";
+import {
+  type BackCoverRegions,
+  backCoverRegionsSchema,
+  describeFromLayout,
+  layoutLines,
+  toBackCoverRegions,
+} from "@/lib/ocr/description";
 import type { OcrEngine } from "@/lib/ocr/engine";
 import { type CatalogHint, extractBackCover, extractFrontCover } from "@/lib/ocr/extract";
 import { activeOcrEngine } from "@/lib/ocr/index";
@@ -155,6 +161,7 @@ export async function runOcr(
   let title: string | null = null;
   let author: string | null = null;
   let description: string | null = null;
+  let backRegions: BackCoverRegions | null = null;
   let attempted = 0;
 
   if (frontPath) {
@@ -185,9 +192,16 @@ export async function runOcr(
     attempted += 1;
     try {
       logger.debug({ sessionId, bookId, backPath }, "runOcr: recognising back cover");
-      description = await readBackCover(sessionId, bookId, backPath, engine, layout);
+      const back = await readBackCover(sessionId, bookId, backPath, engine, layout);
+      description = back.description;
+      backRegions = back.regions;
       logger.debug(
-        { sessionId, bookId, descriptionLength: description?.length ?? 0 },
+        {
+          sessionId,
+          bookId,
+          descriptionLength: description?.length ?? 0,
+          regionCount: backRegions?.regions.length ?? 0,
+        },
         "runOcr: back cover recognised",
       );
     } catch (err) {
@@ -210,6 +224,7 @@ export async function runOcr(
       ocrTitle: title,
       ocrAuthor: author,
       ocrDescription: description,
+      ocrBackRegions: backRegions,
       ocrErrors: errors.length > 0 ? errors : null,
       updatedAt: new Date(),
     })
@@ -248,29 +263,36 @@ function errorMessage(err: unknown): string {
  * Only a completely failed layout run falls back to the OCR engine, whose
  * failure then propagates to the caller as a recorded back-cover error.
  */
+interface BackCoverRead {
+  description: string | null;
+  /** Tappable layout regions for the picker (US-D8); null without layout. */
+  regions: BackCoverRegions | null;
+}
+
 async function readBackCover(
   sessionId: string,
   bookId: string,
   backPath: string,
   engine: OcrEngine,
   layout: LayoutDetector | undefined,
-): Promise<string | null> {
+): Promise<BackCoverRead> {
   if (layout) {
     try {
       const result = await layout(backPath);
+      const regions = toBackCoverRegions(result) ?? null;
       const fromRegion = describeFromLayout(result);
       if (fromRegion) {
         logger.debug(
           { sessionId, bookId, regionCount: result.regions.length },
           "runOcr: description picked from a layout region",
         );
-        return fromRegion;
+        return { description: fromRegion, regions };
       }
       logger.debug(
         { sessionId, bookId, regionCount: result.regions.length },
         "runOcr: no usable layout region — falling back to line-join extraction",
       );
-      return extractBackCover(layoutLines(result)) ?? null;
+      return { description: extractBackCover(layoutLines(result)) ?? null, regions };
     } catch (err) {
       logger.warn(
         { sessionId, bookId, backPath, err: errorMessage(err) },
@@ -280,7 +302,7 @@ async function readBackCover(
   }
 
   const { lines } = await engine.recognize(backPath);
-  return extractBackCover(lines) ?? null;
+  return { description: extractBackCover(lines) ?? null, regions: null };
 }
 
 /**
@@ -320,6 +342,12 @@ export interface IntakeOcrSnapshot {
     author?: string;
     description?: string;
   };
+  /**
+   * Back-cover layout regions the worker can tap-select to compose the
+   * description (US-D8). Undefined when layout detection produced none, in
+   * which case the UI hides the picker.
+   */
+  backRegions?: BackCoverRegions;
   errors: OcrError[];
 }
 
@@ -333,12 +361,15 @@ export function getOcrSnapshot(sessionId: string, bookId: string): IntakeOcrSnap
       ocrTitle: intakeBooks.ocrTitle,
       ocrAuthor: intakeBooks.ocrAuthor,
       ocrDescription: intakeBooks.ocrDescription,
+      ocrBackRegions: intakeBooks.ocrBackRegions,
       ocrErrors: intakeBooks.ocrErrors,
     })
     .from(intakeBooks)
     .where(and(eq(intakeBooks.sessionId, sessionId), eq(intakeBooks.id, bookId)))
     .get();
   if (!row) return undefined;
+
+  const backRegions = parseBackRegions(row.ocrBackRegions, sessionId, bookId);
 
   return {
     status: row.ocrStatus,
@@ -348,6 +379,29 @@ export function getOcrSnapshot(sessionId: string, bookId: string): IntakeOcrSnap
       author: row.ocrAuthor ?? undefined,
       description: row.ocrDescription ?? undefined,
     },
+    ...(backRegions ? { backRegions } : {}),
     errors: (row.ocrErrors as OcrError[] | null) ?? [],
   };
+}
+
+/**
+ * Parse the persisted back-cover regions JSON at the DB boundary (AGENTS.md
+ * rule #2). A row written by an older / broken run that no longer matches the
+ * schema is treated as "no regions" rather than crashing the review page.
+ */
+function parseBackRegions(
+  raw: unknown,
+  sessionId: string,
+  bookId: string,
+): BackCoverRegions | undefined {
+  if (raw == null) return undefined;
+  const parsed = backCoverRegionsSchema.safeParse(raw);
+  if (!parsed.success) {
+    logger.warn(
+      { sessionId, bookId, issues: parsed.error.issues },
+      "getOcrSnapshot: stored back-cover regions did not match the schema — ignoring",
+    );
+    return undefined;
+  }
+  return parsed.data;
 }
