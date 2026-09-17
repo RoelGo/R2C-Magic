@@ -30,6 +30,7 @@ Usage:
     python3 scripts/pp_layout.py <image> \
         [--model-size medium|small|tiny] [--model-dir DIR] \
         [--layout-model PP-DocLayout_plus-L]
+    python3 scripts/pp_layout.py --selftest --model-size small
 
 Setup is the same virtualenv as scripts/pp_ocr.py (paddleocr + paddlepaddle);
 see the README. Any failure exits non-zero with a message on stderr, which the
@@ -62,7 +63,12 @@ def _poly_center(poly):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run PP layout detection + OCR on an image.")
-    parser.add_argument("image", help="Path to the image to process.")
+    parser.add_argument("image", nargs="?", help="Path to the image to process.")
+    parser.add_argument(
+        "--selftest",
+        action="store_true",
+        help="Build the layout + OCR pipelines (downloading weights if missing) and exit.",
+    )
     parser.add_argument(
         "--model-size",
         default="medium",
@@ -80,6 +86,9 @@ def main() -> int:
         help="PaddleOCR layout-detection model name (default: PP-DocLayout_plus-L).",
     )
     args = parser.parse_args()
+
+    if not args.selftest and not args.image:
+        parser.error("an image path is required unless --selftest is given")
 
     # Layout/OCR models are already upright book covers; skip the connectivity
     # check so a cached model runs offline without a long hang.
@@ -106,6 +115,13 @@ def main() -> int:
 
     try:
         layout = LayoutDetection(model_name=args.layout_model)
+        if args.selftest:
+            # Constructing the pipelines is what triggers the weight download;
+            # that is the whole point of the build-time selftest.
+            PaddleOCR(**ocr_kwargs)
+            eprint(f"pp_layout selftest OK ({args.layout_model}, {args.model_size})")
+            return 0
+
         layout_res = layout.predict(args.image)[0]
 
         ocr = PaddleOCR(**ocr_kwargs)

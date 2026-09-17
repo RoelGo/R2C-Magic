@@ -34,6 +34,15 @@ COPY scripts/pp_ocr.py /tmp/pp_ocr.py
 RUN python /tmp/pp_ocr.py --selftest --model-size small \
     && python /tmp/pp_ocr.py --selftest --model-size tiny \
     && rm /tmp/pp_ocr.py
+# Same reasoning for the layout-detection model (PP-DocLayout_plus-L). It is a
+# SEPARATE download from the det/rec weights above: without this the first
+# layout run in a fresh container tries to fetch it at request time and dies
+# with EACCES on /opt/paddlex/locks (the cache is read-only for the runtime
+# user), which surfaces as "detectLayout: script failed" + a silent fallback to
+# the plain OCR engine.
+COPY scripts/pp_layout.py /tmp/pp_layout.py
+RUN python /tmp/pp_layout.py --selftest --model-size small \
+    && rm /tmp/pp_layout.py
 
 # --- deps ---------------------------------------------------------------
 FROM node:20-bookworm-slim AS deps
@@ -96,8 +105,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       gosu python3 libgomp1 libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=ppocr /opt/ocr-venv /opt/ocr-venv
-# Pre-downloaded PP-OCRv6 weights (see the ppocr stage). Read-only at runtime.
+# Pre-downloaded PP-OCRv6 + PP-DocLayout weights (see the ppocr stage). Every
+# model we ship is baked in, so the normal path needs no writes here — but
+# PaddleOCR takes a lock under $PADDLE_PDX_CACHE_HOME/locks even for a cache
+# hit, and will want to download if someone selects a non-baked model size.
+# The entrypoint drops to an arbitrary PUID/PGID, so make the tree group- and
+# world-writable rather than chowning it to a uid we don't know yet.
 COPY --from=ppocr /opt/paddlex /opt/paddlex
+RUN mkdir -p /opt/paddlex/locks && chmod -R a+rwX /opt/paddlex
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs \
     && mkdir -p /app/data && chown -R nextjs:nodejs /app/data
@@ -123,6 +138,7 @@ COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 #
 # Diagnosing OCR in a running container:
 #   docker exec -it <container> /opt/ocr-venv/bin/python scripts/pp_ocr.py --selftest
+#   docker exec -it <container> /opt/ocr-venv/bin/python scripts/pp_layout.py --selftest
 # and set LOG_LEVEL=debug to see the Python process's stderr streamed live.
 
 # NOTE: we intentionally do NOT set `USER nextjs` here. The container starts as
