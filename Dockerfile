@@ -30,19 +30,19 @@ RUN pip install --no-cache-dir --upgrade pip \
 # exits non-zero on any failure, so a broken OCR runtime breaks the build
 # loudly here instead of mysteriously at 03:00 in the shop.
 ENV PADDLE_PDX_CACHE_HOME=/opt/paddlex
-COPY scripts/pp_ocr.py /tmp/pp_ocr.py
-RUN python /tmp/pp_ocr.py --selftest --model-size small \
-    && python /tmp/pp_ocr.py --selftest --model-size tiny \
-    && rm /tmp/pp_ocr.py
+# Both scripts, together: pp_layout.py imports the shared oneDNN fallback
+# helpers from pp_ocr.py, so they must sit in the same directory.
+COPY scripts/pp_ocr.py scripts/pp_layout.py /tmp/ppocr-scripts/
+RUN python /tmp/ppocr-scripts/pp_ocr.py --selftest --model-size small \
+    && python /tmp/ppocr-scripts/pp_ocr.py --selftest --model-size tiny
 # Same reasoning for the layout-detection model (PP-DocLayout_plus-L). It is a
 # SEPARATE download from the det/rec weights above: without this the first
 # layout run in a fresh container tries to fetch it at request time and dies
 # with EACCES on /opt/paddlex/locks (the cache is read-only for the runtime
 # user), which surfaces as "detectLayout: script failed" + a silent fallback to
 # the plain OCR engine.
-COPY scripts/pp_layout.py /tmp/pp_layout.py
-RUN python /tmp/pp_layout.py --selftest --model-size small \
-    && rm /tmp/pp_layout.py
+RUN python /tmp/ppocr-scripts/pp_layout.py --selftest --model-size small \
+    && rm -rf /tmp/ppocr-scripts
 
 # --- deps ---------------------------------------------------------------
 FROM node:20-bookworm-slim AS deps
