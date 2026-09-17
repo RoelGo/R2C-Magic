@@ -1,6 +1,7 @@
 "use client";
 
 import type { IntakeOcrSnapshot } from "@/lib/intake/ocr";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 interface OcrStatusProps {
@@ -27,10 +28,20 @@ const TERMINAL = new Set(["done", "empty", "failed"]);
 export function OcrStatus({ sessionId, bookId, hasPhoto, photoVersion }: OcrStatusProps) {
   const [snapshot, setSnapshot] = useState<IntakeOcrSnapshot | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!hasPhoto) return;
     let cancelled = false;
+    // Whether this polling cycle ever saw OCR in flight. Combined with
+    // `photoVersion > 0` (a capture happened during this mount, so whatever
+    // OCR reports is new) this decides if finishing warrants a refresh.
+    // Landing on a page whose OCR completed long ago must not trigger a
+    // pointless RSC round-trip on every visit.
+    let sawActive = false;
+    // Guard against refreshing twice: poll() can be re-entered via the
+    // catch-branch retry after a terminal response was already seen.
+    let refreshed = false;
 
     // A newly captured photo (photoVersion bump) kicks off a fresh server-side
     // run; reset to the in-flight state so we don't show stale suggestions.
@@ -46,7 +57,17 @@ export function OcrStatus({ sessionId, bookId, hasPhoto, photoVersion }: OcrStat
         if (cancelled) return;
         setSnapshot(data);
         if (!TERMINAL.has(data.status)) {
+          sawActive = true;
           timerRef.current = setTimeout(poll, POLL_MS);
+        } else if ((sawActive || photoVersion > 0) && !refreshed) {
+          // OCR just finished. Its results — the title/author suggestions and
+          // the US-D8 back-cover regions that gate the "Select description
+          // from back cover" button — reach the review form through the
+          // *server* render of the book page; this local snapshot never gets
+          // there. Without the refresh the whole review step stays stale until
+          // the user manually reloads. Same pattern as run-progress.tsx.
+          refreshed = true;
+          router.refresh();
         }
       } catch {
         if (!cancelled) timerRef.current = setTimeout(poll, POLL_MS);
@@ -58,7 +79,7 @@ export function OcrStatus({ sessionId, bookId, hasPhoto, photoVersion }: OcrStat
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [sessionId, bookId, hasPhoto, photoVersion]);
+  }, [sessionId, bookId, hasPhoto, photoVersion, router]);
 
   if (!hasPhoto) return null;
 
