@@ -51,11 +51,11 @@ export function buildItemUpdate(book: IntakeBookRow): ItemUpdatePayload {
   const description = book.reviewedDescription?.trim();
   if (description) ecom.longDescription = description;
   if (typeof book.reviewedWeightGrams === "number" && book.reviewedWeightGrams > 0) {
-    // v1 mapping divides grams by 1000 → kg for the Weight column.
-    ecom.weight = book.reviewedWeightGrams / 1000;
+    ecom.weight = book.reviewedWeightGrams;
   }
   if (Object.keys(ecom).length > 0) payload.ItemECommerce = ecom;
-
+  // Always list on store
+  ecom.listOnStore = true;
   return payload;
 }
 

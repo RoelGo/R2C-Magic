@@ -152,6 +152,7 @@ export interface ItemUpdatePayload {
     longDescription?: string;
     /** Weight in the account's unit (we send kg, mirroring the v1 mapping). */
     weight?: number;
+    listOnStore?: boolean
   };
 }
 
